@@ -1,0 +1,37 @@
+---
+description: Generate or update colocated CLAUDE.md context files for features/folders
+globs: ["**/CLAUDE.md"]
+alwaysApply: false
+---
+
+# gen-context skill
+Trigger: user asks to generate/update context for a folder or feature.
+
+## Steps
+1. Read all files in target folder (1 level deep + key subdirs).
+2. Identify: purpose, key exports, patterns, gotchas, dependencies.
+3. Write/overwrite `<folder>/CLAUDE.md` with:
+   - **Purpose**: 1-line folder role
+   - **Key files**: bullet list with 1-line desc each
+   - **Patterns**: conventions used here
+   - **Deps**: notable imports/dependencies
+   - **Gotchas**: non-obvious constraints
+4. Be concise — this file is loaded into agent context, every token counts.
+
+## Format
+```md
+# <folder-name>
+<one-line purpose>
+
+## Files
+- `file.ts` — <role>
+
+## Patterns
+- <pattern>
+
+## Deps
+- <dep>
+
+## Gotchas
+- <gotcha>
+```

@@ -1,0 +1,22 @@
+---
+description: Update colocated CLAUDE.md files for changed folders then commit
+alwaysApply: false
+---
+
+# commit skill (update-and-commit)
+Trigger: user asks to commit changes.
+
+## Steps
+1. `git diff --name-only HEAD` — list changed files.
+2. Group by folder. For each folder with changes:
+   - Re-run gen-context logic on that folder.
+   - Stage updated `CLAUDE.md` if changed.
+3. Stage all intended files.
+4. Write concise conventional commit message: `<type>(<scope>): <what changed>`.
+5. Commit. Do NOT push unless asked.
+
+## Commit message rules
+- Types: feat | fix | refactor | chore | docs | test
+- Scope: folder or feature name
+- Body optional, only if non-obvious why
+- No co-authored-by unless user requests

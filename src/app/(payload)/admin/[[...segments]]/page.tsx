@@ -17,5 +17,5 @@ export default function AdminPage(props: Args) {
     importMap,
     params: props.params.then((p) => ({ segments: p.segments })),
     searchParams: props.searchParams,
-    } as Parameters<typeof RootPage>[0]);
+  } as Parameters<typeof RootPage>[0]);
 }

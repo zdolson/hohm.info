@@ -20,7 +20,10 @@ const dirname = path.dirname(__filename);
 export default buildConfig({
   admin: {
     meta: { titleSuffix: " | hohm.info" },
-    importMap: { baseDir: path.resolve(dirname) },
+    importMap: {
+      baseDir: path.resolve(dirname),
+      importMapFile: path.resolve(dirname, "app/(payload)/admin/importMap.ts"),
+    },
     user: Users.slug,
   },
   collections: [Users, Media, Tags, Listings],

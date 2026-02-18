@@ -54,6 +54,7 @@
     "typescript": "^5"
   },
   "packageManager": "pnpm@9.15.0",
+  "type": "module",
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",

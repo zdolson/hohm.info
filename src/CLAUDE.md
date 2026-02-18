@@ -5,7 +5,7 @@ Next.js app + Payload CMS: config, collections, app routes.
 - `payload.config.ts` — Payload config; loads `.env.local` via dotenv, Postgres pool, collections
 - `collections/*.ts` — Payload collection defs: Users (role, access), Media, Tags, Listings
 - `lib/payload.ts` — getPayload() server helper (cached)
-- `app/` — Next routes; `(payload)/admin`, `(payload)/api` for Payload
+- `app/` — Next routes; `(payload)/admin`, `(payload)/api` for Payload; admin `importMap.ts` generated via `pnpm payload generate:importmap` (config `admin.importMap.importMapFile`)
 - `payload-types.ts` — generated; run `pnpm generate:types` to refresh
 
 ## Patterns

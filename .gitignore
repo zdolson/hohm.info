@@ -5,6 +5,7 @@ package-lock.json
 .env*.local
 dist
 *.tsbuildinfo
+.pnpm-store
 
 # Supabase local
 supabase/.temp/

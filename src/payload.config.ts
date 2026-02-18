@@ -4,11 +4,15 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
-import { buildConfig } from "payload";
+import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { postgresAdapter } from "@payloadcms/db-postgres";
+import { buildConfig } from "payload";
 import sharp from "sharp";
 
 import { Users } from "./collections/Users";
+import { Media } from "./collections/Media";
+import { Tags } from "./collections/Tags";
+import { Listings } from "./collections/Listings";
 
 const __filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(__filename);
@@ -19,7 +23,8 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
     user: Users.slug,
   },
-  collections: [Users],
+  collections: [Users, Media, Tags, Listings],
+  editor: lexicalEditor({}),
   db: postgresAdapter({
     pool: { connectionString: process.env.DATABASE_URL! },
   }),

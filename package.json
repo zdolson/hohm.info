@@ -18,18 +18,22 @@
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.0.0",
+    "@payloadcms/richtext-lexical": "^3.76.1",
     "@testing-library/react": "^16.3.2",
     "@vitejs/plugin-react": "^5.1.4",
+    "graphql": "^16.12.0",
     "jsdom": "^28.1.0",
     "next": "15.4.11",
     "payload": "^3.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "server-only": "^0.0.1",
+    "sharp": "^0.34.5",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.0.18"
   },
   "devDependencies": {
+    "dotenv": "^16.4.5",
     "@payloadcms/next": "^3.0.0",
     "@playwright/test": "^1.58.2",
     "@types/node": "^22",

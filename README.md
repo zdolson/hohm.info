@@ -4,8 +4,8 @@ Home listings with deep tag knowledge. Next.js 15 + Payload 3 + Postgres (Supaba
 
 ## Setup
 
-1. Copy `.env.example` to `.env` and set `DATABASE_URL`, `PAYLOAD_SECRET`, `NEXT_PUBLIC_SERVER_URL`.
-2. `pnpm install` (or `npm install`).
+1. Copy `.env.example` to `.env.local` and set `DATABASE_URL`, `PAYLOAD_SECRET`, `NEXT_PUBLIC_SERVER_URL`.
+2. `pnpm install`.
 3. `pnpm dev` — app at http://localhost:3000, admin at http://localhost:3000/admin.
 
 ## Scripts

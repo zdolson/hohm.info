@@ -1,7 +1,6 @@
-import type { Access, CollectionConfig } from "payload";
-
-const isAdmin: Access = ({ req }) =>
-  (req.user as { role?: string } | null)?.role === "admin";
+import type { CollectionConfig } from "payload";
+import { isAdmin } from "@/lib/access";
+import { slug, safeUrl } from "@/lib/validate";
 
 const listingEventTypeOptions = [
   { label: "Listed for Sale", value: "listed" },
@@ -43,16 +42,16 @@ export const Listings: CollectionConfig = {
   },
   fields: [
     { name: "title", type: "text", required: true },
-    { name: "slug", type: "text", required: true, unique: true },
+    { name: "slug", type: "text", required: true, unique: true, validate: slug },
     { name: "address", type: "text" },
     { name: "city", type: "text" },
     { name: "state", type: "text" },
     { name: "region", type: "text" },
-    { name: "yearBuilt", type: "number" },
-    { name: "price", type: "number" },
+    { name: "yearBuilt", type: "number", min: 0 },
+    { name: "price", type: "number", min: 0 },
     { name: "garageSpaces", type: "number", min: 0 },
     { name: "summary", type: "textarea" },
-    { name: "sourceUrl", type: "text" },
+    { name: "sourceUrl", type: "text", validate: safeUrl },
     {
       type: "group",
       name: "location",
@@ -77,7 +76,7 @@ export const Listings: CollectionConfig = {
           type: "select",
           options: statusOptions,
         },
-        { name: "stories", type: "number" },
+        { name: "stories", type: "number", min: 0 },
       ],
     },
     {
@@ -85,26 +84,26 @@ export const Listings: CollectionConfig = {
       name: "interior",
       label: "Interior",
       fields: [
-        { name: "bedrooms", type: "number" },
-        { name: "bathroomsFull", type: "number" },
-        { name: "bathroomsHalf", type: "number", defaultValue: 0 },
-        { name: "squareFootage", type: "number" },
-        { name: "fireplaces", type: "number", defaultValue: 0 },
+        { name: "bedrooms", type: "number", min: 0 },
+        { name: "bathroomsFull", type: "number", min: 0 },
+        { name: "bathroomsHalf", type: "number", min: 0, defaultValue: 0 },
+        { name: "squareFootage", type: "number", min: 0 },
+        { name: "fireplaces", type: "number", min: 0, defaultValue: 0 },
       ],
     },
     {
       type: "group",
       name: "lot",
       label: "Lot",
-      fields: [{ name: "lotSize", type: "number" }],
+      fields: [{ name: "lotSize", type: "number", min: 0 }],
     },
     {
       type: "group",
       name: "financial",
       label: "Financial",
       fields: [
-        { name: "annualTaxes", type: "number" },
-        { name: "taxYear", type: "number" },
+        { name: "annualTaxes", type: "number", min: 0 },
+        { name: "taxYear", type: "number", min: 0 },
       ],
     },
     {
@@ -119,7 +118,7 @@ export const Listings: CollectionConfig = {
           required: true,
           options: listingEventTypeOptions,
         },
-        { name: "price", type: "number" },
+        { name: "price", type: "number", min: 0 },
         { name: "source", type: "text" },
         { name: "mlsNumber", type: "text" },
       ],

@@ -4,6 +4,12 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
+const required = (name: string): string => {
+  const val = process.env[name];
+  if (!val) throw new Error(`Missing required env var: ${name}`);
+  return val;
+};
+
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { buildConfig } from "payload";
@@ -29,10 +35,15 @@ export default buildConfig({
   collections: [Users, Media, Tags, Listings],
   editor: lexicalEditor({}),
   db: postgresAdapter({
-    pool: { connectionString: process.env.DATABASE_URL! },
+    pool: { connectionString: required("DATABASE_URL") },
   }),
+  upload: {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10 MB
+    },
+  },
   sharp,
-  secret: process.env.PAYLOAD_SECRET!,
+  secret: required("PAYLOAD_SECRET"),
   serverURL: process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000",
   typescript: { outputFile: path.resolve(dirname, "payload-types.ts") },
 });

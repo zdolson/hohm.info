@@ -1,13 +1,13 @@
-import type { Access, CollectionConfig } from "payload";
-
-const isAdmin: Access = ({ req }) =>
-  (req.user as { role?: string } | null)?.role === "admin";
+import type { CollectionConfig } from "payload";
+import { isAdmin } from "@/lib/access";
 
 export const Users: CollectionConfig = {
   slug: "users",
   admin: { useAsTitle: "email" },
   auth: true,
   access: {
+    // List requests: id is undefined → only admins can list all users.
+    // Single-doc requests: admin or self.
     read: ({ req, id }) =>
       (req.user as { role?: string; id?: string } | null)?.role === "admin" ||
       (id != null && String((req.user as { id?: string } | null)?.id) === String(id)),

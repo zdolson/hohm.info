@@ -4,6 +4,7 @@
  */
 import path from "path";
 import dotenv from "dotenv";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
@@ -27,7 +28,6 @@ describe("Phase 1 collections", () => {
 
   afterAll(async () => {
     if (!payload) return;
-    // Clean up: delete test listing then test tag
     const listings = await payload.find({
       collection: "listings",
       where: { slug: { equals: testListingSlug } },
@@ -61,7 +61,7 @@ describe("Phase 1 collections", () => {
       data: {
         name: "Integration Test Tag",
         slug: testTagSlug,
-        category: "materials",
+        category: "exterior",
         description: "For integration test",
       },
       overrideAccess: true,
@@ -88,8 +88,7 @@ describe("Phase 1 collections", () => {
         slug: testListingSlug,
         city: "Grand Rapids",
         state: "MI",
-        beds: 2,
-        baths: 1,
+        interior: { bedrooms: 2, bathroomsFull: 1 },
         tags: [tagId],
       },
       overrideAccess: true,
@@ -120,7 +119,7 @@ describe("Phase 1 collections", () => {
         data: {
           name: "Should Fail",
           slug: "should-fail-tag",
-          category: "materials",
+          category: "exterior",
         },
         overrideAccess: false,
         req: { user: undefined } as any,

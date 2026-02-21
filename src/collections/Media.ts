@@ -1,7 +1,5 @@
-import type { Access, CollectionConfig } from "payload";
-
-const isAdmin: Access = ({ req }) =>
-  (req.user as { role?: string } | null)?.role === "admin";
+import type { CollectionConfig } from "payload";
+import { isAdmin } from "@/lib/access";
 
 export const Media: CollectionConfig = {
   slug: "media",

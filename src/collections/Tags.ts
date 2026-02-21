@@ -1,7 +1,6 @@
-import type { Access, CollectionConfig } from "payload";
-
-const isAdmin: Access = ({ req }) =>
-  (req.user as { role?: string } | null)?.role === "admin";
+import type { CollectionConfig } from "payload";
+import { isAdmin } from "@/lib/access";
+import { slug, safeUrl } from "@/lib/validate";
 
 export const Tags: CollectionConfig = {
   slug: "tags",
@@ -17,7 +16,7 @@ export const Tags: CollectionConfig = {
   },
   fields: [
     { name: "name", type: "text", required: true },
-    { name: "slug", type: "text", required: true, unique: true },
+    { name: "slug", type: "text", required: true, unique: true, validate: slug },
     {
       name: "category",
       type: "select",
@@ -43,7 +42,7 @@ export const Tags: CollectionConfig = {
       type: "array",
       fields: [
         { name: "label", type: "text", required: true },
-        { name: "url", type: "text", required: true },
+        { name: "url", type: "text", required: true, validate: safeUrl },
         {
           name: "type",
           type: "select",

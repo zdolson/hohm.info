@@ -150,6 +150,11 @@ export interface User {
  */
 export interface Media {
   id: number;
+  /**
+   * Accessibility/SEO alt text
+   */
+  alt?: string | null;
+  caption?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -170,7 +175,22 @@ export interface Tag {
   id: number;
   name: string;
   slug: string;
-  category?: ('materials' | 'systems' | 'region' | 'era' | 'hazards') | null;
+  category?:
+    | (
+        | 'style'
+        | 'exterior'
+        | 'roofing'
+        | 'structure'
+        | 'systems'
+        | 'utilities'
+        | 'interior'
+        | 'parking'
+        | 'features'
+        | 'hazards'
+        | 'era'
+        | 'region'
+      )
+    | null;
   description?: string | null;
   content?: {
     root: {
@@ -213,12 +233,45 @@ export interface Listing {
   region?: string | null;
   yearBuilt?: number | null;
   price?: number | null;
-  beds?: number | null;
-  baths?: number | null;
-  sqft?: number | null;
   garageSpaces?: number | null;
   summary?: string | null;
   sourceUrl?: string | null;
+  location?: {
+    zipCode?: string | null;
+    county?: string | null;
+  };
+  property?: {
+    propertyType?: ('singleFamily' | 'condo' | 'townhouse' | 'multiFamily' | 'land' | 'mobileHome') | null;
+    status?: ('active' | 'pending' | 'sold' | 'offMarket') | null;
+    stories?: number | null;
+  };
+  interior?: {
+    bedrooms?: number | null;
+    bathroomsFull?: number | null;
+    bathroomsHalf?: number | null;
+    squareFootage?: number | null;
+    fireplaces?: number | null;
+  };
+  lot?: {
+    lotSize?: number | null;
+  };
+  financial?: {
+    annualTaxes?: number | null;
+    taxYear?: number | null;
+  };
+  /**
+   * Price/status history; price and status at root are denormalized for filtering.
+   */
+  listingEvents?:
+    | {
+        date: string;
+        eventType: 'listed' | 'priceChange' | 'pending' | 'active' | 'sold' | 'listedForRent' | 'listingRemoved';
+        price?: number | null;
+        source?: string | null;
+        mlsNumber?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   photos?: (number | Media)[] | null;
   tags?: (number | Tag)[] | null;
   updatedAt: string;
@@ -334,6 +387,8 @@ export interface UsersSelect<T extends boolean = true> {
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
+  alt?: T;
+  caption?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -381,12 +436,52 @@ export interface ListingsSelect<T extends boolean = true> {
   region?: T;
   yearBuilt?: T;
   price?: T;
-  beds?: T;
-  baths?: T;
-  sqft?: T;
   garageSpaces?: T;
   summary?: T;
   sourceUrl?: T;
+  location?:
+    | T
+    | {
+        zipCode?: T;
+        county?: T;
+      };
+  property?:
+    | T
+    | {
+        propertyType?: T;
+        status?: T;
+        stories?: T;
+      };
+  interior?:
+    | T
+    | {
+        bedrooms?: T;
+        bathroomsFull?: T;
+        bathroomsHalf?: T;
+        squareFootage?: T;
+        fireplaces?: T;
+      };
+  lot?:
+    | T
+    | {
+        lotSize?: T;
+      };
+  financial?:
+    | T
+    | {
+        annualTaxes?: T;
+        taxYear?: T;
+      };
+  listingEvents?:
+    | T
+    | {
+        date?: T;
+        eventType?: T;
+        price?: T;
+        source?: T;
+        mlsNumber?: T;
+        id?: T;
+      };
   photos?: T;
   tags?: T;
   updatedAt?: T;

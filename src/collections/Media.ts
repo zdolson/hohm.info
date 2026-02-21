@@ -12,6 +12,10 @@ export const Media: CollectionConfig = {
     update: isAdmin,
     delete: isAdmin,
   },
+  fields: [
+    { name: "alt", type: "text", admin: { description: "Accessibility/SEO alt text" } },
+    { name: "caption", type: "text" },
+  ],
   upload: {
     mimeTypes: [
       "image/jpeg",
@@ -21,5 +25,4 @@ export const Media: CollectionConfig = {
       "application/pdf",
     ],
   },
-  fields: [],
 };

@@ -63,10 +63,10 @@ todos:
     content: "Create / page (app/(frontend)/page.tsx): basic landing with title + CTA link to /listings."
     status: pending
   - id: p2-listings-index
-    content: "Create /listings page: fetch paginated listings via getPayload().find(). Render listing cards (title, city, state, beds/baths, price). Support ?tag=slug filter via Payload where. Show pagination (page/totalPages)."
+    content: "Create /listings page: fetch paginated listings via getPayload().find(). Render listing cards (title, city, state, bedrooms/bathroomsFull, price). Support ?tag=slug filter via Payload where. Show pagination (page/totalPages)."
     status: pending
   - id: p2-listing-detail
-    content: "Create /listings/[slug] page: fetch single listing by slug. Render all fields + photos + tag chips (link to /tags/[slug] and filter link to /listings?tag=slug). Call notFound() if slug not found."
+    content: "Create /listings/[slug] page: fetch single listing by slug. Render all fields (incl. interior.*, listingEvents timeline) + photos + tag chips (link to /tags/[slug] and filter link to /listings?tag=slug). Call notFound() if slug not found."
     status: pending
   - id: p2-tag-page
     content: "Create /tags/[slug] page: fetch tag by slug. Render name, category, description, richText content, resources list, media. Call notFound() if missing."
@@ -84,13 +84,13 @@ todos:
     content: "Verify: all public pages render, tag filter works, tag page shows knowledge content, 404 works, PostHog tracks page views, pagination works."
     status: pending
   - id: p3-search-builder
-    content: "Create src/lib/search.ts: function that takes searchParams (tag, beds, baths, sqft, garageSpaces, state, city, address) and returns a Payload `where` object. Use gte for numeric ranges, contains for address/city text, equals for state."
+    content: "Create src/lib/search.ts: function that takes searchParams (tag, bedrooms, bathroomsFull, squareFootage, garageSpaces, propertyType, status, state, city, address) and returns a Payload `where` object. Use gte for numeric ranges, contains for address/city text, equals for state/status. Query nested interior.* and property.* where needed."
     status: pending
   - id: p3-filter-ui
-    content: "Update /listings page: parse all search params, pass to search builder, use in payload.find(). Add basic filter form/controls (inputs/selects for beds, baths, state, city, tag). URL-driven — form submits update query params."
+    content: "Update /listings page: parse all search params, pass to search builder, use in payload.find(). Add basic filter form/controls (inputs/selects for bedrooms, bathroomsFull, state, city, propertyType, status, tag). URL-driven — form submits update query params."
     status: pending
   - id: p3-unit-tests
-    content: "Write Vitest unit tests for search.ts: various param combos produce correct Payload where clauses. Edge cases: empty params, multiple tags, sqft range."
+    content: "Write Vitest unit tests for search.ts: various param combos produce correct Payload where clauses. Edge cases: empty params, multiple tags, squareFootage range."
     status: pending
   - id: p3-e2e-filter
     content: "Write E2E tests: apply filters, verify URL updates, verify results change. Test combined filters."
@@ -183,11 +183,11 @@ isProject: false
 
 ### Phase 1: Data model + admin UI (Listings, Tags, Media)
 
-**Goals:** Editors manage Listings, Tags (with knowledge content), and Media via Payload admin. Listings include **searchable attributes** (beds, baths, sqft, garage, state, city, address) for Phase 3 search.
+**Goals:** Editors manage Listings, Tags (with knowledge content), and Media via Payload admin. Listings include **searchable attributes** (bedrooms, bathroomsFull, squareFootage, garageSpaces, propertyType, status, state, city, address) for Phase 3 search.
 
 **User stories:**
 
-- Create/edit listings (address, city, state, location, year, price, beds, baths, sqft, garage, summary, photos, tags, source URL).
+- Create/edit listings (address, city, state, location, year, price, interior: bedrooms/bathroomsFull/squareFootage, garage, listingEvents, property: status/propertyType, summary, photos, tags, source URL).
 - Create/edit tags (name, slug, category, description, rich text, resources array, media). Tags are at least **filterable** on listings; optional tag landing page TBD.
 - Upload media; attach to listings and tags.
 
@@ -197,10 +197,10 @@ isProject: false
 
 - **Users** — Payload default; roles (e.g. `admin`, `editor`) for future.
 - **Tags** — `name`, `slug`, `category` (select or text), `description` (textarea), `content` (richText), `resources` (array: `{ label, url, type }`), `media` (upload relation). Used as filterable facets; optional dedicated tag page later.
-- **Listings** — `title`, `slug`, `address`, `city`, `state`, `region` (optional), `yearBuilt`, `price` (optional), `beds` (number), `baths` (number), `sqft` (number), `garageSpaces` (number, 0+; for filtering), `summary`, `sourceUrl`, `photos` (upload array), `tags` (relationship many-to-many). Descriptive garage details (e.g. "detached", "attached", "carport") modeled as tags.
+- **Listings** — `title`, `slug`, `address`, `city`, `state`, `region` (optional), `yearBuilt`, `price` (optional), groups: location (zipCode, county), property (propertyType, status, stories), interior (bedrooms, bathroomsFull, bathroomsHalf, squareFootage, fireplaces), lot (lotSize), financial (annualTaxes, taxYear); `listingEvents` array; `garageSpaces`, `summary`, `sourceUrl`, `photos` (upload array), `tags` (relationship many-to-many). Descriptive garage details modeled as tags.
 - **Media** — Payload upload collection (local by default; Supabase S3 optional later).
 
-**Acceptance criteria:** Admin CRUD for all; many-to-many listing–tag; tag has rich text + resources; media upload works. Listings have beds/baths/sqft/state/city/address for search.
+**Acceptance criteria:** Admin CRUD for all; many-to-many listing–tag; tag has rich text + resources; media upload works. Listings have bedrooms/bathroomsFull/squareFootage/state/city/address (and listingEvents) for search/display.
 
 **Out of scope:** Public site, search UI, background jobs.
 
@@ -215,7 +215,7 @@ isProject: false
 **Key pages:**
 
 - `/` — Basic landing (title, CTA to listings).
-- `/listings` — List of listings; filter by `?tag=slug` (and later Phase 3 params: beds, baths, state, city, address, sqft, etc.).
+- `/listings` — List of listings; filter by `?tag=slug` (and later Phase 3 params: bedrooms, bathroomsFull, state, city, address, squareFootage, propertyType, status, etc.).
 - `/listings/[slug]` — Listing detail: fields + photo(s) + tag chips (filter links; optionally link to `/tags/[slug]` if that route exists).
 - `/tags/[slug]` — Tag knowledge hub: name, category, description, rich content, resources, media. Scaffolded in Phase 2; can iterate or remove later.
 
@@ -227,17 +227,17 @@ isProject: false
 
 ### Phase 3: Search + filtering
 
-**Goals:** Search/filter by **listing attributes** (beds, baths, sqft, garage, state, city, address) and by **tags**. URL-driven (query params); no separate search engine required for MVP.
+**Goals:** Search/filter by **listing attributes** (bedrooms, bathroomsFull, squareFootage, garageSpaces, propertyType, status, state, city, address) and by **tags**. URL-driven (query params); no separate search engine required for MVP.
 
-**User stories:** Visitor filters listings by tag(s), and by # beds, # baths, sqft range, state, city, address (text search), and optionally garage (field or tag).
+**User stories:** Visitor filters listings by tag(s), and by bedrooms, bathroomsFull, squareFootage range, propertyType, status, state, city, address (text search), and optionally garage (field or tag).
 
 **Key implementation:**
 
-- Listings already have: `beds`, `baths`, `sqft`, `garage`, `state`, `city`, `address` (Phase 1).
-- Query params: e.g. `/listings?tag=slug&beds=3&baths=2&state=MI&city=Grand+Rapids&address=...`. Build Payload `where` from params (e.g. `and([ tags.slug.equals, beds.equals, state.equals, ... ])`). Optional: full-text or `contains` on `address`/`city` for "search by address".
+- Listings already have: interior (bedrooms, bathroomsFull, squareFootage), property (status, propertyType), garageSpaces, state, city, address (Phase 1b).
+- Query params: e.g. `/listings?tag=slug&bedrooms=3&bathroomsFull=2&state=MI&city=Grand+Rapids&address=...`. Build Payload `where` from params (e.g. `and([ tags.slug.equals, interior.bedrooms.equals, property.status.equals, ... ])`). Optional: full-text or `contains` on `address`/`city` for "search by address".
 - Garage: `garageSpaces` (number, 0+) on Listings for numeric filtering (>= N); descriptive aspects (e.g. "detached garage", "carport") as tags.
 
-**Acceptance criteria:** Filter by tag(s) and by beds/baths/sqft/state/city/address works; URL reflects filters; results update correctly.
+**Acceptance criteria:** Filter by tag(s) and by bedrooms/bathroomsFull/squareFootage/state/city/address/propertyType/status works; URL reflects filters; results update correctly.
 
 **Out of scope:** External search engine (Meilisearch/Typesense), ranking, complex full-text in MVP.
 
@@ -499,7 +499,7 @@ public/
 
 - **Users** — Extend default or use Payload’s; add role field if needed.
 - **Tags** — See code snippet below.
-- **Listings** — `title`, `slug`, `address`, `city`, `state`, `region`, `yearBuilt`, `price`, `beds`, `baths`, `sqft`, `garageSpaces`, `summary`, `sourceUrl`, `photos` (upload array), `tags` (relationship many).
+- **Listings** — `title`, `slug`, `address`, `city`, `state`, `region`, `yearBuilt`, `price`, location/property/interior/lot/financial groups, `listingEvents`, `garageSpaces`, `summary`, `sourceUrl`, `photos` (upload array), `tags` (relationship many).
 - **Media** — Standard upload collection; enable in config.
 
 ### Seed script

@@ -39,10 +39,10 @@ todos:
     content: "Create Media upload collection. Set mimeTypes (image/jpeg, image/png, image/webp, image/gif, application/pdf). Set maxFileSize. access: read public, write isAdmin."
     status: completed
   - id: p1-tags
-    content: "Create Tags collection: name, slug (unique), category (select: materials/systems/region/era/hazards), description (textarea), content (richText), resources (array: label/url/type), media (upload hasMany). access: read public, write isAdmin."
+    content: "Create Tags collection: name, slug (unique, validated), category (select: 12 categories — style/exterior/roofing/structure/systems/utilities/interior/parking/features/hazards/era/region), description (textarea), content (richText), resources (array: label/url validated/type), media (upload hasMany). access: read public, write isAdmin."
     status: completed
   - id: p1-listings
-    content: "Create Listings collection: title, slug (unique), address, city, state, region, yearBuilt, price, beds, baths, sqft, garageSpaces, summary, sourceUrl, photos (upload array -> media), tags (relationship hasMany -> tags). access: read public, write isAdmin."
+    content: "Create Listings collection: title, slug (unique, validated), address, city, state, region, yearBuilt, price, garageSpaces, groups (location, property, interior w/ bedrooms/bathroomsFull/bathroomsHalf/squareFootage/fireplaces, lot, financial), listingEvents array, summary, sourceUrl (validated), photos (upload array -> media), tags (relationship hasMany -> tags). All numerics min:0. access: read public, write isAdmin."
     status: completed
   - id: p1-seed
     content: Create scripts/seed.ts (run via tsx). Seed 3 tags (Brick Exterior, Knob-and-Tube Wiring, Slate Roof) + 2-3 Grand Rapids listings with tag relations. Add `seed` script to package.json.
@@ -55,21 +55,27 @@ todos:
     status: completed
   - id: p1-verify
     content: "Verify: admin CRUD for all collections works, many-to-many listing<->tag works, media upload works, seed script runs."
+    status: completed
+  - id: p2-tailwind
+    content: "Install Tailwind CSS 4: `pnpm add tailwindcss @tailwindcss/postcss postcss`, create postcss.config.mjs, add `@import 'tailwindcss'` to global CSS. Verify styles work in dev."
+    status: pending
+  - id: p2-rename-requireenv
+    content: "Rename `required()` to `requireEnv()` in src/payload.config.ts for clarity (env-specific name)."
     status: pending
   - id: p2-layout
-    content: Create root layout.tsx with minimal nav (Home, Listings). Use Tailwind for minimal styling. Add not-found.tsx for 404.
+    content: "Update existing src/app/layout.tsx: add minimal nav (Home, Listings) + Tailwind base styles. Create src/app/(frontend)/layout.tsx if needed for public-only wrapper. Add src/app/not-found.tsx for 404. NOTE: layout.tsx and page.tsx already exist at src/app/ — edit, don't recreate."
     status: pending
   - id: p2-home
-    content: "Create / page (app/(frontend)/page.tsx): basic landing with title + CTA link to /listings."
+    content: "Move / page into (frontend) route group: create src/app/(frontend)/page.tsx with landing (title + CTA to /listings). Remove or replace the existing src/app/page.tsx (currently a Payload default). Import getPayload from '@/lib/payload'."
     status: pending
   - id: p2-listings-index
-    content: "Create /listings page: fetch paginated listings via getPayload().find(). Render listing cards (title, city, state, bedrooms/bathroomsFull, price). Support ?tag=slug filter via Payload where. Show pagination (page/totalPages)."
+    content: "Create src/app/(frontend)/listings/page.tsx: fetch paginated listings via (await getPayload()).find(). Import getPayload from '@/lib/payload'. Render listing cards (title, city, state, interior.bedrooms/interior.bathroomsFull, price). Support ?tag=slug filter via Payload where. Show pagination (page/totalPages)."
     status: pending
   - id: p2-listing-detail
-    content: "Create /listings/[slug] page: fetch single listing by slug. Render all fields (incl. interior.*, listingEvents timeline) + photos + tag chips (link to /tags/[slug] and filter link to /listings?tag=slug). Call notFound() if slug not found."
+    content: "Create src/app/(frontend)/listings/[slug]/page.tsx: fetch single listing by slug. Render all fields: top-level (title, address, city, state, yearBuilt, price), location.* (zipCode, county), property.* (propertyType, status, stories), interior.* (bedrooms, bathroomsFull, bathroomsHalf, squareFootage, fireplaces), lot.lotSize, financial.* (annualTaxes, taxYear), garageSpaces. Render listingEvents as timeline. Show photos + tag chips (link to /tags/[slug] and filter link /listings?tag=slug). Call notFound() if missing."
     status: pending
   - id: p2-tag-page
-    content: "Create /tags/[slug] page: fetch tag by slug. Render name, category, description, richText content, resources list, media. Call notFound() if missing."
+    content: "Create src/app/(frontend)/tags/[slug]/page.tsx: fetch tag by slug via getPayload() from '@/lib/payload'. Render name, category, description, richText content (Lexical), resources list, media. Call notFound() if missing."
     status: pending
   - id: p2-posthog
     content: Install posthog-js. Create client-only PostHogProvider component. Add to root layout. Add NEXT_PUBLIC_POSTHOG_KEY and NEXT_PUBLIC_POSTHOG_HOST to .env.example. Track page views automatically.
@@ -210,14 +216,24 @@ isProject: false
 
 **Goals:** Public read-only pages: home, listings list, listing detail. **Tags are at least filterable** (e.g. chips/links that apply `?tag=slug`). Optional: dedicated tag knowledge page `/tags/[slug]` if product decision is to have tag landing pages.
 
+**Prerequisites / setup:**
+
+- **Install Tailwind CSS 4:** `pnpm add tailwindcss @tailwindcss/postcss postcss`, create `postcss.config.mjs`, add `@import 'tailwindcss'` to global CSS. No `tailwind.config.ts` needed for v4 (CSS-first config).
+- **Rename `required()` → `requireEnv()`** in `src/payload.config.ts` for clarity.
+- **Existing files:** `src/app/layout.tsx` and `src/app/page.tsx` already exist (Payload generated). Edit or move them — do not recreate.
+- **Seeded data:** Run `pnpm seed` if DB is empty (3 listings, 22 tags).
+- **Route groups:** `(payload)` already exists at `src/app/(payload)/`. Create `(frontend)` for public routes.
+
 **User stories:** Visitor sees listing list and detail; each listing shows tags as filterable chips (and optionally links to tag knowledge). If tag pages exist: visitor can open a tag and see rich content and resources.
 
 **Key pages:**
 
-- `/` — Basic landing (title, CTA to listings).
-- `/listings` — List of listings; filter by `?tag=slug` (and later Phase 3 params: bedrooms, bathroomsFull, state, city, address, squareFootage, propertyType, status, etc.).
-- `/listings/[slug]` — Listing detail: fields + photo(s) + tag chips (filter links; optionally link to `/tags/[slug]` if that route exists).
-- `/tags/[slug]` — Tag knowledge hub: name, category, description, rich content, resources, media. Scaffolded in Phase 2; can iterate or remove later.
+- `/` — Basic landing (title, CTA to listings). File: `src/app/(frontend)/page.tsx`.
+- `/listings` — List of listings; filter by `?tag=slug`. File: `src/app/(frontend)/listings/page.tsx`.
+- `/listings/[slug]` — Listing detail: all field groups (location, property, interior, lot, financial) + listingEvents timeline + photos + tag chips. File: `src/app/(frontend)/listings/[slug]/page.tsx`.
+- `/tags/[slug]` — Tag knowledge hub: name, category, description, rich content (Lexical), resources, media. File: `src/app/(frontend)/tags/[slug]/page.tsx`.
+
+**Data access pattern:** Import `getPayload` from `@/lib/payload` (server-only singleton). Use `payload.find()` / `payload.findByArgs()` in Server Components. Use `depth: 1` to resolve tag relations on listings.
 
 **Acceptance criteria:** All pages render with data from Payload; listing detail shows tags; filtering by tag works; tag page shows full knowledge content; 404 for missing slug. Listing index is paginated.
 
@@ -285,7 +301,7 @@ isProject: false
 
 - On listing detail, iterate `listing.tags` (already resolved at `depth: 1`); render each tag's `description` + `resources` inline (e.g. accordion or card per tag).
 - Optionally render a truncated `content` (richText) excerpt with "read more" link to `/tags/[slug]`.
-- Order tags by category grouping (materials, systems, hazards, etc.) for scannability.
+- Order tags by category grouping (style, exterior, roofing, structure, systems, utilities, interior, parking, features, hazards, era, region) for scannability.
 - No new collections or API changes; purely a rendering enhancement on an existing page.
 
 **Acceptance criteria:** Listing detail shows tag knowledge inline; resources render as clickable links (YouTube opens embed or external); content is truncated with link to full tag page. Page remains fast (no extra Payload calls if depth already resolves tags).
@@ -420,7 +436,7 @@ isProject: false
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Data location**   | Postgres on Supabase; schema created and evolved by Payload (Drizzle under `@payloadcms/db-postgres`). No Prisma.                                                                                                                                              |
 | **Listings ↔ Tags** | Many-to-many: Listing has `tags` relationship (array of Tag); junction table managed by Payload.                                                                                                                                                               |
-| **Tag knowledge**   | One `tags` collection: `description` (short), `content` (richText), `resources` (array of `{ label, url, type }`), optional `media` relation. Category = select or text for grouping (materials, systems, region, era, hazards).                               |
+| **Tag knowledge**   | One `tags` collection: `description` (short), `content` (richText), `resources` (array of `{ label, url, type }`), optional `media` relation. Category select: style, exterior, roofing, structure, systems, utilities, interior, parking, features, hazards, era, region (12 total). |
 | **Media**           | **PoC:** Payload local uploads (files on server filesystem). **Later:** Supabase Storage via S3-compatible API + `@payloadcms/storage-s3` to avoid server disk and to suit serverless (Fly/Railway). Recommend adding S3 when deploying or when storage grows. |
 | **Auth (admin)**    | Payload built-in auth (email + password); cookies/session. Roles via Payload `roles` or custom field on User.                                                                                                                                                  |
 | **Access control**  | Payload `access` per collection: `read` public for Listings/Tags/Media; `create/update/delete` require `isAdmin` or role. HomeRecords/HomeRecordDocuments: owner-only via `where` constraint. Users: admin-only read (except self).                            |
@@ -452,48 +468,59 @@ isProject: false
 ```text
 src/
   app/
-    (frontend)/           # public routes
-      page.tsx            # /
+    layout.tsx             # root layout (nav, Tailwind, PostHog provider)
+    not-found.tsx          # 404 page
+    page.tsx               # exists — replace or redirect to (frontend)
+    (frontend)/            # public routes (Phase 2)
+      page.tsx             # / — landing
       listings/
-        page.tsx          # /listings
-        [slug]/page.tsx   # /listings/[slug]
+        page.tsx           # /listings
+        [slug]/page.tsx    # /listings/[slug]
       tags/
-        [slug]/page.tsx   # /tags/[slug]
-    (payload)/            # Payload route handlers
+        [slug]/page.tsx    # /tags/[slug]
+    (payload)/             # Payload route handlers (exist)
+      layout.tsx
       admin/[[...segments]]/page.tsx
       api/[...slug]/route.ts
-    not-found.tsx          # 404 page
-    layout.tsx
-  payload/
-    collections/
-      Users.ts
-      Tags.ts
-      Listings.ts
-      Media.ts
-      HomeRecords.ts           # Phase 7
-      HomeRecordDocuments.ts   # Phase 7
-    payload.config.ts
-  components/             # minimal shared UI
+  collections/             # Payload collection configs (NOT under payload/)
+    Users.ts
+    Tags.ts
+    Listings.ts
+    Media.ts
+    HomeRecords.ts         # Phase 7
+    HomeRecordDocuments.ts # Phase 7
+  components/              # shared UI components (Phase 2+)
     layout/
     listings/
     tags/
   lib/
-    payload.ts            # getPayload client (server)
-    search.ts             # query builder: searchParams -> Payload where (Phase 3)
-  payload-types.ts       # generated; add to .gitignore if regenerated in CI
+    access.ts              # shared isAdmin access control
+    validate.ts            # slug + safeUrl validators
+    payload.ts             # getPayload() server helper (cached singleton)
+    search.ts              # query builder: searchParams -> Payload where (Phase 3)
+  payload.config.ts        # Payload config (NOT under payload/)
+  payload-types.ts         # generated; run `pnpm generate:types`
+scripts/
+  seed.ts                  # seed tags + listings; run `pnpm seed`
 tests/
-  unit/                  # Vitest unit tests
-  integration/           # Payload integration tests
-  e2e/                   # Playwright E2E tests
-public/
+  unit/                    # Vitest unit tests
+  integration/             # Payload integration tests (needs DB)
+  e2e/                     # Playwright E2E tests
 .env.example
-.env
+.env.local                 # actual env (gitignored)
 ```
+
+**Key conventions:**
+- **Imports:** Use `@/` alias (maps to `src/`). E.g. `import { getPayload } from '@/lib/payload'`, `import { isAdmin } from '@/lib/access'`.
+- **Access control:** All collections import `isAdmin` from `@/lib/access`.
+- **Validators:** Slug and URL fields use `slug` / `safeUrl` from `@/lib/validate`.
+- **Numerics:** All count/size/price fields have `min: 0`.
+- **Env:** Required vars (`DATABASE_URL`, `PAYLOAD_SECRET`) validated at startup via `requireEnv()` in `payload.config.ts`.
 
 ### Config and env
 
-- **Payload config:** Single `src/payload.config.ts` (or `src/payload/payload.config.ts`) importing collections, `db: postgresAdapter({ pool: { connectionString: process.env.DATABASE_URL } })`, `admin: { ... }`, `serverURL: process.env.NEXT_PUBLIC_SERVER_URL`.
-- **.env template (no secrets):** See section 6 below.
+- **Payload config:** `src/payload.config.ts` — imports collections from `./collections/*`, uses `requireEnv()` for `DATABASE_URL` and `PAYLOAD_SECRET`, Lexical editor, 10MB upload limit. See Section 6 for full code.
+- **.env template (no secrets):** See section 6 below. Actual env file is `.env.local` (gitignored).
 
 ### Collections to add (Phase 1)
 
@@ -508,7 +535,7 @@ public/
 
 ### Public routes (Phase 2)
 
-- **Minimal UI:** One layout with nav (Home, Listings, optional Tags index); listing cards; listing detail; tag detail. Use Server Components; fetch via `getPayload()` in server components or server actions. No design system; Tailwind or minimal CSS.
+- **Minimal UI:** Edit existing `src/app/layout.tsx` to add nav (Home, Listings). Create `src/app/(frontend)/` route group for public pages. Use Tailwind CSS 4 (install first — not yet in deps). Use Server Components; fetch via `getPayload()` from `@/lib/payload`. No design system beyond Tailwind.
 
 ---
 
@@ -564,67 +591,94 @@ NEXT_PUBLIC_SERVER_URL=http://localhost:3000
 
 ---
 
-### payload.config.ts (skeleton)
+### payload.config.ts (actual — reflects current code)
 
 ```ts
+// src/payload.config.ts — ESM, uses dotenv for .env.local
 import path from "path";
-import { buildConfig } from "payload";
+import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+
+const requireEnv = (name: string): string => {
+  const val = process.env[name];
+  if (!val) throw new Error(`Missing required env var: ${name}`);
+  return val;
+};
+
+import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { postgresAdapter } from "@payloadcms/db-postgres";
+import { buildConfig } from "payload";
+import sharp from "sharp";
 
 import { Users } from "./collections/Users";
+import { Media } from "./collections/Media";
 import { Tags } from "./collections/Tags";
 import { Listings } from "./collections/Listings";
-import { Media } from "./collections/Media";
+
+const __filename = fileURLToPath(import.meta.url);
+const dirname = path.dirname(__filename);
 
 export default buildConfig({
   admin: {
     meta: { titleSuffix: " | hohm.info" },
-  },
-  collections: [Users, Tags, Listings, Media],
-  db: postgresAdapter({
-    pool: {
-      connectionString: process.env.DATABASE_URL!,
+    importMap: {
+      baseDir: path.resolve(dirname),
+      importMapFile: path.resolve(dirname, "app/(payload)/admin/importMap.ts"),
     },
-  }),
-  secret: process.env.PAYLOAD_SECRET!,
-  typescript: {
-    outputFile: path.resolve(__dirname, "../payload-types.ts"),
+    user: Users.slug,
   },
+  collections: [Users, Media, Tags, Listings],
+  editor: lexicalEditor({}),
+  db: postgresAdapter({
+    pool: { connectionString: requireEnv("DATABASE_URL") },
+  }),
+  upload: {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10 MB
+    },
+  },
+  sharp,
+  secret: requireEnv("PAYLOAD_SECRET"),
+  serverURL: process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000",
+  typescript: { outputFile: path.resolve(dirname, "payload-types.ts") },
 });
 ```
 
-(Note: if using `withPayload` Next plugin, wrap `next.config.ts` accordingly; see Payload docs.)
-
 ---
 
-### DB adapter (already in config)
-
-No separate file; the snippet above is the full adapter setup. Use `DATABASE_URL` from env (Supabase connection string).
-
----
-
-### Example collection: Tags
+### Example collection: Tags (actual — reflects current code)
 
 ```ts
-// src/payload/collections/Tags.ts
+// src/collections/Tags.ts
 import type { CollectionConfig } from "payload";
+import { isAdmin } from "@/lib/access";
+import { slug, safeUrl } from "@/lib/validate";
 
 export const Tags: CollectionConfig = {
   slug: "tags",
   admin: { useAsTitle: "name", defaultColumns: ["name", "slug", "category"] },
-  access: { read: () => true },
+  access: { read: () => true, create: isAdmin, update: isAdmin, delete: isAdmin },
   fields: [
     { name: "name", type: "text", required: true },
-    { name: "slug", type: "text", required: true, unique: true },
+    { name: "slug", type: "text", required: true, unique: true, validate: slug },
     {
       name: "category",
       type: "select",
       options: [
-        { label: "Materials", value: "materials" },
+        { label: "Style", value: "style" },
+        { label: "Exterior", value: "exterior" },
+        { label: "Roofing", value: "roofing" },
+        { label: "Structure", value: "structure" },
         { label: "Systems", value: "systems" },
-        { label: "Region", value: "region" },
-        { label: "Era", value: "era" },
+        { label: "Utilities", value: "utilities" },
+        { label: "Interior", value: "interior" },
+        { label: "Parking", value: "parking" },
+        { label: "Features", value: "features" },
         { label: "Hazards", value: "hazards" },
+        { label: "Era", value: "era" },
+        { label: "Region", value: "region" },
       ],
     },
     { name: "description", type: "textarea" },
@@ -634,11 +688,16 @@ export const Tags: CollectionConfig = {
       type: "array",
       fields: [
         { name: "label", type: "text", required: true },
-        { name: "url", type: "text", required: true },
+        { name: "url", type: "text", required: true, validate: safeUrl },
         {
           name: "type",
           type: "select",
-          options: ["link", "youtube", "guide", "cost"],
+          options: [
+            { label: "Link", value: "link" },
+            { label: "YouTube", value: "youtube" },
+            { label: "Guide", value: "guide" },
+            { label: "Cost", value: "cost" },
+          ],
         },
       ],
     },

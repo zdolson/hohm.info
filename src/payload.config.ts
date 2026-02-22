@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
-const required = (name: string): string => {
+const requireEnv = (name: string): string => {
   const val = process.env[name];
   if (!val) throw new Error(`Missing required env var: ${name}`);
   return val;
@@ -35,7 +35,7 @@ export default buildConfig({
   collections: [Users, Media, Tags, Listings],
   editor: lexicalEditor({}),
   db: postgresAdapter({
-    pool: { connectionString: required("DATABASE_URL") },
+    pool: { connectionString: requireEnv("DATABASE_URL") },
   }),
   upload: {
     limits: {
@@ -43,7 +43,7 @@ export default buildConfig({
     },
   },
   sharp,
-  secret: required("PAYLOAD_SECRET"),
+  secret: requireEnv("PAYLOAD_SECRET"),
   serverURL: process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000",
   typescript: { outputFile: path.resolve(dirname, "payload-types.ts") },
 });

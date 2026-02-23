@@ -9,7 +9,8 @@ Next.js app + Payload CMS: config, collections, app routes.
 - `collections/*.ts` — Payload collection defs: Users (role, access), Media, Tags, Listings
 - `lib/payload.ts` — getPayload() server helper (cached)
 - `lib/access.ts` — shared `isAdmin` (import as `@/lib/access`)
-- `lib/validate.ts` — shared validators: `slug`, `safeUrl` (import as `@/lib/validate`)
+- `lib/validate.ts` — shared validators: `slug`, `safeUrl`, `isValidSlug` (import as `@/lib/validate`)
+- `lib/search.ts` — listings URL param parsing: `parseListingsSearchParams`, `buildListingsWhere`, `buildListingsUrl`
 - `app/layout.tsx` — Root layout; nav (Home, Listings), imports `globals.css`
 - `app/globals.css` — Panda CSS layers (reset, base, tokens, recipes, utilities)
 - `app/(payload)/` — Payload admin + API routes

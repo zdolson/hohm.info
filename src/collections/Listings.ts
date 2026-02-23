@@ -12,21 +12,25 @@ const listingEventTypeOptions = [
   { label: "Listing Removed", value: "listingRemoved" },
 ];
 
-const propertyTypeOptions = [
+export const propertyTypeOptions = [
   { label: "Single Family", value: "singleFamily" },
   { label: "Condo", value: "condo" },
   { label: "Townhouse", value: "townhouse" },
   { label: "Multi Family", value: "multiFamily" },
   { label: "Land", value: "land" },
   { label: "Mobile Home", value: "mobileHome" },
-];
+] as const;
 
-const statusOptions = [
+export type PropertyTypeValue = (typeof propertyTypeOptions)[number]["value"];
+
+export const statusOptions = [
   { label: "Active", value: "active" },
   { label: "Pending", value: "pending" },
   { label: "Sold", value: "sold" },
   { label: "Off Market", value: "offMarket" },
-];
+] as const;
+
+export type StatusValue = (typeof statusOptions)[number]["value"];
 
 export const Listings: CollectionConfig = {
   slug: "listings",
@@ -75,12 +79,12 @@ export const Listings: CollectionConfig = {
         {
           name: "propertyType",
           type: "select",
-          options: propertyTypeOptions,
+          options: [...propertyTypeOptions],
         },
         {
           name: "status",
           type: "select",
-          options: statusOptions,
+          options: [...statusOptions],
         },
         { name: "stories", type: "number", min: 0 },
       ],

@@ -122,8 +122,8 @@ describe("Phase 1 collections", () => {
           category: "exterior",
         },
         overrideAccess: false,
-        req: { user: undefined } as any,
-      }),
+        req: { user: undefined },
+      })
     ).rejects.toThrow();
   });
 

@@ -1,0 +1,13 @@
+---
+description: TypeScript code quality standards for the project
+globs: **/*.ts,**/*.tsx
+alwaysApply: true
+---
+
+# Code Quality
+
+- **Strict equality only**: Always `===` / `!==`. Never `==` / `!=` — including for null/undefined checks.
+- **`as const` for option arrays**: Constrain option/enum-like arrays with `as const`; derive union types from them.
+- **Narrow types over `string`**: Prefer derived literal unions (e.g. `PropertyTypeValue`) over plain `string` in param/return types.
+- **No `any`**: Use `unknown` + type narrowing. Cast with `as` only when TS can't infer.
+- **Explicit boolean checks**: Avoid `!!val`; use explicit comparisons.

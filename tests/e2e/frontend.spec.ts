@@ -37,10 +37,48 @@ test.describe("public frontend", () => {
     const tagLink = page.getByRole("link", { name: "Ranch" }).first();
     if (await tagLink.isVisible()) {
       await tagLink.click();
-      await expect(page).toHaveURL(/tag=ranch/);
+      await expect(page).toHaveURL(/tags=ranch/);
     }
-    await page.goto("/listings?tag=ranch");
-    await expect(page).toHaveURL(/tag=ranch/);
+    await page.goto("/listings?tags=ranch");
+    await expect(page).toHaveURL(/tags=ranch/);
+  });
+
+  test("filter form is visible and Apply filters submits", async ({ page }) => {
+    await page.goto("/listings");
+    await expect(
+      page.getByRole("button", { name: /apply filters/i })
+    ).toBeVisible();
+    await expect(page.getByLabel(/beds \(min\)/i)).toBeVisible();
+    await page.getByLabel(/state/i).fill("MI");
+    await page.getByRole("button", { name: /apply filters/i }).click();
+    await expect(page).toHaveURL(/state=MI/);
+  });
+
+  test("URL with filter params loads and form reflects params", async ({
+    page,
+  }) => {
+    await page.goto("/listings?bedrooms=2&state=MI");
+    await expect(page).toHaveURL(/bedrooms=2/);
+    await expect(page).toHaveURL(/state=MI/);
+    await expect(page.getByLabel(/beds \(min\)/i)).toHaveValue("2");
+    await expect(page.getByLabel(/state/i)).toHaveValue("MI");
+  });
+
+  test("combined filters in URL work", async ({ page }) => {
+    await page.goto("/listings?tags=ranch&bedrooms=2");
+    await expect(page).toHaveURL(/tags=ranch/);
+    await expect(page).toHaveURL(/bedrooms=2/);
+    await expect(
+      page.getByRole("heading", { name: /listings/i })
+    ).toBeVisible();
+  });
+
+  test("Clear link resets to /listings", async ({ page }) => {
+    await page.goto("/listings?state=MI");
+    await expect(page.getByRole("link", { name: /clear/i })).toBeVisible();
+    await page.getByRole("link", { name: /clear/i }).click();
+    await expect(page).toHaveURL(/\/listings$/);
+    await expect(page).not.toHaveURL(/state=/);
   });
 
   test("404 for missing listing slug", async ({ page }) => {

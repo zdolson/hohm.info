@@ -6,6 +6,7 @@ Park UI component library (Panda CSS recipes + Ark UI primitives).
 
 - `ui/index.ts` — barrel export: Badge, Button, Card, Heading, Text, Icon, Link, Loader, Spinner, etc.
 - `ui/*.tsx` — individual component wrappers using Panda CSS recipe styles from `@/theme/recipes`
+- `Filter/FilterInput.tsx`, `Filter/FilterSelect.tsx` — form controls for listings filter (label + input/select, Panda CSS)
 
 ## Patterns
 

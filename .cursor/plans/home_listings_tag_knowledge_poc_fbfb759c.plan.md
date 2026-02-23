@@ -56,38 +56,41 @@ todos:
   - id: p1-verify
     content: "Verify: admin CRUD for all collections works, many-to-many listing<->tag works, media upload works, seed script runs."
     status: completed
-  - id: p2-tailwind
-    content: "Install Tailwind CSS 4: `pnpm add tailwindcss @tailwindcss/postcss postcss`, create postcss.config.mjs, add `@import 'tailwindcss'` to global CSS. Verify styles work in dev."
-    status: pending
+  - id: p2-styling
+    content: "Installed Panda CSS + Park UI (replaced planned Tailwind CSS 4). Created panda.config.ts with Park UI preset (ruby accent, olive gray), postcss.config.mjs, full theme system in src/theme/ (tokens, recipes, keyframes, conditions). Built component library in src/components/ui/ (14 components: badge, button, card, heading, icon, link, text, spinner, etc.)."
+    status: completed
   - id: p2-rename-requireenv
-    content: "Rename `required()` to `requireEnv()` in src/payload.config.ts for clarity (env-specific name)."
-    status: pending
+    content: Rename `required()` to `requireEnv()` in src/payload.config.ts for clarity (env-specific name).
+    status: completed
   - id: p2-layout
-    content: "Update existing src/app/layout.tsx: add minimal nav (Home, Listings) + Tailwind base styles. Create src/app/(frontend)/layout.tsx if needed for public-only wrapper. Add src/app/not-found.tsx for 404. NOTE: layout.tsx and page.tsx already exist at src/app/ — edit, don't recreate."
-    status: pending
+    content: "Updated src/app/layout.tsx with nav (Home, Listings) + Panda CSS styling. Created (frontend) route group. globals.css uses Panda CSS layer directives."
+    status: completed
   - id: p2-home
-    content: "Move / page into (frontend) route group: create src/app/(frontend)/page.tsx with landing (title + CTA to /listings). Remove or replace the existing src/app/page.tsx (currently a Payload default). Import getPayload from '@/lib/payload'."
-    status: pending
+    content: Created src/app/(frontend)/page.tsx with landing (title + CTA to /listings). Removed old Payload default page.tsx.
+    status: completed
   - id: p2-listings-index
-    content: "Create src/app/(frontend)/listings/page.tsx: fetch paginated listings via (await getPayload()).find(). Import getPayload from '@/lib/payload'. Render listing cards (title, city, state, interior.bedrooms/interior.bathroomsFull, price). Support ?tag=slug filter via Payload where. Show pagination (page/totalPages)."
-    status: pending
+    content: "Created src/app/(frontend)/listings/page.tsx: paginated listings via getPayload().find(), tag filter via ?tag=slug, listing cards with Panda CSS + Park UI components."
+    status: completed
   - id: p2-listing-detail
-    content: "Create src/app/(frontend)/listings/[slug]/page.tsx: fetch single listing by slug. Render all fields: top-level (title, address, city, state, yearBuilt, price), location.* (zipCode, county), property.* (propertyType, status, stories), interior.* (bedrooms, bathroomsFull, bathroomsHalf, squareFootage, fireplaces), lot.lotSize, financial.* (annualTaxes, taxYear), garageSpaces. Render listingEvents as timeline. Show photos + tag chips (link to /tags/[slug] and filter link /listings?tag=slug). Call notFound() if missing."
-    status: pending
+    content: "Created src/app/(frontend)/listings/[slug]/page.tsx: all field groups (location, property, interior, lot, financial), listingEvents timeline, photos, tag chips linking to /tags/[slug] and /listings?tag=slug. Calls notFound() if missing."
+    status: completed
   - id: p2-tag-page
-    content: "Create src/app/(frontend)/tags/[slug]/page.tsx: fetch tag by slug via getPayload() from '@/lib/payload'. Render name, category, description, richText content (Lexical), resources list, media. Call notFound() if missing."
-    status: pending
+    content: "Created src/app/(frontend)/tags/[slug]/page.tsx: name, category, description, richText content (Lexical), resources list, media. Calls notFound() if missing."
+    status: completed
   - id: p2-posthog
-    content: Install posthog-js. Create client-only PostHogProvider component. Add to root layout. Add NEXT_PUBLIC_POSTHOG_KEY and NEXT_PUBLIC_POSTHOG_HOST to .env.example. Track page views automatically.
-    status: pending
+    content: "Installed posthog-js. Created PostHogProvider + PostHogPageView (client-only). Wired into root layout. Env: NEXT_PUBLIC_POSTHOG_KEY, NEXT_PUBLIC_POSTHOG_HOST in .env.example. Page views tracked when key set."
+    status: completed
   - id: p2-metadata
     content: Add generateMetadata to /listings/[slug] and /tags/[slug] for basic SEO (title, description from listing/tag data).
-    status: pending
+    status: completed
+  - id: p2-notfound
+    content: "Created src/app/not-found.tsx: heading, message, Home + Listings links (Panda CSS)."
+    status: completed
   - id: p2-e2e
-    content: "Write Playwright E2E tests: load /, /listings, /listings/[slug], /tags/[slug]. Verify content renders. Test tag filter link works. Test 404 for missing slug."
-    status: pending
+    content: "Added tests/e2e/frontend.spec.ts: home, listings index, listing detail (seed slug), tag page, tag filter URL, 404 for missing slug. Run pnpm test:e2e (requires seed + dev server)."
+    status: completed
   - id: p2-verify
-    content: "Verify: all public pages render, tag filter works, tag page shows knowledge content, 404 works, PostHog tracks page views, pagination works."
+    content: "Manual: pnpm seed && pnpm dev, then pnpm test:e2e. Verify pages, tag filter, 404, pagination."
     status: pending
   - id: p3-search-builder
     content: "Create src/lib/search.ts: function that takes searchParams (tag, bedrooms, bathroomsFull, squareFootage, garageSpaces, propertyType, status, state, city, address) and returns a Payload `where` object. Use gte for numeric ranges, contains for address/city text, equals for state/status. Query nested interior.* and property.* where needed."
@@ -216,13 +219,13 @@ isProject: false
 
 **Goals:** Public read-only pages: home, listings list, listing detail. **Tags are at least filterable** (e.g. chips/links that apply `?tag=slug`). Optional: dedicated tag knowledge page `/tags/[slug]` if product decision is to have tag landing pages.
 
-**Prerequisites / setup:**
+**Prerequisites / setup (completed):**
 
-- **Install Tailwind CSS 4:** `pnpm add tailwindcss @tailwindcss/postcss postcss`, create `postcss.config.mjs`, add `@import 'tailwindcss'` to global CSS. No `tailwind.config.ts` needed for v4 (CSS-first config).
-- **Rename `required()` → `requireEnv()`** in `src/payload.config.ts` for clarity.
-- **Existing files:** `src/app/layout.tsx` and `src/app/page.tsx` already exist (Payload generated). Edit or move them — do not recreate.
-- **Seeded data:** Run `pnpm seed` if DB is empty (3 listings, 22 tags).
-- **Route groups:** `(payload)` already exists at `src/app/(payload)/`. Create `(frontend)` for public routes.
+- **Panda CSS + Park UI** installed instead of Tailwind CSS 4. Full theme system in `src/theme/` with tokens, recipes, keyframes. Component library in `src/components/ui/` (badge, button, card, heading, icon, link, text, spinner, etc.). Config: `panda.config.ts`, `postcss.config.mjs`.
+- `**requireEnv()` already renamed in `src/payload.config.ts`.
+- **Route groups:** `(payload)` for admin, `(frontend)` for public routes. Root layout updated with nav.
+- **Seeded data:** `pnpm seed` seeds 3 listings + 22 tags.
+- **Husky + lint-staged** added for pre-commit formatting.
 
 **User stories:** Visitor sees listing list and detail; each listing shows tags as filterable chips (and optionally links to tag knowledge). If tag pages exist: visitor can open a tag and see rich content and resources.
 
@@ -236,6 +239,8 @@ isProject: false
 **Data access pattern:** Import `getPayload` from `@/lib/payload` (server-only singleton). Use `payload.find()` / `payload.findByArgs()` in Server Components. Use `depth: 1` to resolve tag relations on listings.
 
 **Acceptance criteria:** All pages render with data from Payload; listing detail shows tags; filtering by tag works; tag page shows full knowledge content; 404 for missing slug. Listing index is paginated.
+
+**Status:** Core pages implemented. Remaining: PostHog analytics (deferred), E2E tests, global not-found.tsx, final verification.
 
 **Out of scope:** Full search/filter UI (Phase 3), SEO sitemap, auth for public.
 
@@ -432,16 +437,17 @@ isProject: false
 
 ## 2. Architecture decisions
 
-| Topic               | Decision                                                                                                                                                                                                                                                       |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Data location**   | Postgres on Supabase; schema created and evolved by Payload (Drizzle under `@payloadcms/db-postgres`). No Prisma.                                                                                                                                              |
-| **Listings ↔ Tags** | Many-to-many: Listing has `tags` relationship (array of Tag); junction table managed by Payload.                                                                                                                                                               |
+| Topic               | Decision                                                                                                                                                                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Data location**   | Postgres on Supabase; schema created and evolved by Payload (Drizzle under `@payloadcms/db-postgres`). No Prisma.                                                                                                                                                                     |
+| **Listings ↔ Tags** | Many-to-many: Listing has `tags` relationship (array of Tag); junction table managed by Payload.                                                                                                                                                                                      |
 | **Tag knowledge**   | One `tags` collection: `description` (short), `content` (richText), `resources` (array of `{ label, url, type }`), optional `media` relation. Category select: style, exterior, roofing, structure, systems, utilities, interior, parking, features, hazards, era, region (12 total). |
-| **Media**           | **PoC:** Payload local uploads (files on server filesystem). **Later:** Supabase Storage via S3-compatible API + `@payloadcms/storage-s3` to avoid server disk and to suit serverless (Fly/Railway). Recommend adding S3 when deploying or when storage grows. |
-| **Auth (admin)**    | Payload built-in auth (email + password); cookies/session. Roles via Payload `roles` or custom field on User.                                                                                                                                                  |
-| **Access control**  | Payload `access` per collection: `read` public for Listings/Tags/Media; `create/update/delete` require `isAdmin` or role. HomeRecords/HomeRecordDocuments: owner-only via `where` constraint. Users: admin-only read (except self).                            |
-| **HomeRecords**     | Private per-user. `owner` (User), optional `listing` (Listing). 1 listing : N records (multiple owners over time). Documents sub-collection with upload + metadata. Future: AI processing, record transfer.                                                    |
-| **SEO**             | Basic: Next.js `metadata`/`generateMetadata` on listing and tag pages (title, description). Sitemap/structured data in Phase 3 or later.                                                                                                                       |
+| **Media**           | **PoC:** Payload local uploads (files on server filesystem). **Later:** Supabase Storage via S3-compatible API + `@payloadcms/storage-s3` to avoid server disk and to suit serverless (Fly/Railway). Recommend adding S3 when deploying or when storage grows.                        |
+| **Auth (admin)**    | Payload built-in auth (email + password); cookies/session. Roles via Payload `roles` or custom field on User.                                                                                                                                                                         |
+| **Access control**  | Payload `access` per collection: `read` public for Listings/Tags/Media; `create/update/delete` require `isAdmin` or role. HomeRecords/HomeRecordDocuments: owner-only via `where` constraint. Users: admin-only read (except self).                                                   |
+| **HomeRecords**     | Private per-user. `owner` (User), optional `listing` (Listing). 1 listing : N records (multiple owners over time). Documents sub-collection with upload + metadata. Future: AI processing, record transfer.                                                                           |
+| **Styling**         | **Panda CSS + Park UI** (replaced Tailwind). Config: `panda.config.ts` (Park UI preset, ruby accent, olive gray). Theme tokens/recipes in `src/theme/`. Component library: `src/components/ui/` (14 Park UI components). PostCSS plugin: `@pandacss/dev/postcss`.                     |
+| **SEO**             | Basic: Next.js `metadata`/`generateMetadata` on listing and tag pages (title, description). Sitemap/structured data in Phase 3 or later.                                                                                                                                              |
 
 **Server Actions vs dedicated API**
 
@@ -468,37 +474,62 @@ isProject: false
 ```text
 src/
   app/
-    layout.tsx             # root layout (nav, Tailwind, PostHog provider)
-    not-found.tsx          # 404 page
-    page.tsx               # exists — replace or redirect to (frontend)
-    (frontend)/            # public routes (Phase 2)
+    layout.tsx             # root layout (nav, Panda CSS)
+    globals.css            # Panda CSS layer directives
+    page.tsx               # removed (replaced by (frontend)/page.tsx)
+    CLAUDE.md              # app routing context
+    (frontend)/            # public routes
       page.tsx             # / — landing
       listings/
-        page.tsx           # /listings
-        [slug]/page.tsx    # /listings/[slug]
+        page.tsx           # /listings (paginated, ?tag filter)
+        [slug]/page.tsx    # /listings/[slug] (full detail)
       tags/
-        [slug]/page.tsx    # /tags/[slug]
-    (payload)/             # Payload route handlers (exist)
+        [slug]/page.tsx    # /tags/[slug] (knowledge hub)
+    (payload)/             # Payload route handlers
       layout.tsx
       admin/[[...segments]]/page.tsx
       api/[...slug]/route.ts
-  collections/             # Payload collection configs (NOT under payload/)
+  collections/             # Payload collection configs
     Users.ts
     Tags.ts
     Listings.ts
     Media.ts
+    CLAUDE.md              # collection conventions
     HomeRecords.ts         # Phase 7
     HomeRecordDocuments.ts # Phase 7
-  components/              # shared UI components (Phase 2+)
-    layout/
-    listings/
-    tags/
+  components/              # Park UI component library
+    ui/
+      index.ts             # barrel export
+      badge.tsx
+      button.tsx
+      card.tsx
+      heading.tsx
+      icon.tsx
+      link.tsx
+      text.tsx
+      spinner.tsx
+      loader.tsx
+      group.tsx
+      span.tsx
+      absolute-center.tsx
+    CLAUDE.md              # component patterns
+  theme/                   # Panda CSS theme system
+    tokens/                # colors, shadows, durations, z-index
+    recipes/               # component recipes (button, card, badge, etc.)
+    conditions.ts
+    keyframes.ts
+    global-css.ts
+    text-styles.ts
+    layer-styles.ts
+    animation-styles.ts
+    colors/ruby.ts
+    CLAUDE.md              # theme context
   lib/
     access.ts              # shared isAdmin access control
     validate.ts            # slug + safeUrl validators
     payload.ts             # getPayload() server helper (cached singleton)
     search.ts              # query builder: searchParams -> Payload where (Phase 3)
-  payload.config.ts        # Payload config (NOT under payload/)
+  payload.config.ts        # Payload config
   payload-types.ts         # generated; run `pnpm generate:types`
 scripts/
   seed.ts                  # seed tags + listings; run `pnpm seed`
@@ -506,11 +537,16 @@ tests/
   unit/                    # Vitest unit tests
   integration/             # Payload integration tests (needs DB)
   e2e/                     # Playwright E2E tests
+  CLAUDE.md                # testing patterns
+panda.config.ts            # Panda CSS config (Park UI preset, ruby/olive)
+postcss.config.mjs         # PostCSS with @pandacss/dev plugin
+components.json            # Park UI CLI config
 .env.example
 .env.local                 # actual env (gitignored)
 ```
 
 **Key conventions:**
+
 - **Imports:** Use `@/` alias (maps to `src/`). E.g. `import { getPayload } from '@/lib/payload'`, `import { isAdmin } from '@/lib/access'`.
 - **Access control:** All collections import `isAdmin` from `@/lib/access`.
 - **Validators:** Slug and URL fields use `slug` / `safeUrl` from `@/lib/validate`.
@@ -519,7 +555,7 @@ tests/
 
 ### Config and env
 
-- **Payload config:** `src/payload.config.ts` — imports collections from `./collections/*`, uses `requireEnv()` for `DATABASE_URL` and `PAYLOAD_SECRET`, Lexical editor, 10MB upload limit. See Section 6 for full code.
+- **Payload config:** `src/payload.config.ts` — imports collections from `./collections/`, uses `requireEnv()` for `DATABASE_URL` and `PAYLOAD_SECRET`, Lexical editor, 10MB upload limit. See Section 6 for full code.
 - **.env template (no secrets):** See section 6 below. Actual env file is `.env.local` (gitignored).
 
 ### Collections to add (Phase 1)
@@ -533,9 +569,9 @@ tests/
 
 - Script: `scripts/seed.ts` run with `tsx`: get Payload instance, create 2-3 tags (e.g. "Brick Exterior", "Knob-and-Tube Wiring", "Slate Roof") then 2-3 Grand Rapids listings with tag relations. Use `payload.create()`; no Prisma. Add `"seed": "tsx scripts/seed.ts"` to `package.json`.
 
-### Public routes (Phase 2)
+### Public routes (Phase 2 — implemented)
 
-- **Minimal UI:** Edit existing `src/app/layout.tsx` to add nav (Home, Listings). Create `src/app/(frontend)/` route group for public pages. Use Tailwind CSS 4 (install first — not yet in deps). Use Server Components; fetch via `getPayload()` from `@/lib/payload`. No design system beyond Tailwind.
+- **UI:** Root layout has nav (Home, Listings). `(frontend)/` route group for public pages. Uses Panda CSS + Park UI components. Server Components fetch via `getPayload()` from `@/lib/payload`. Component library in `src/components/ui/`.
 
 ---
 
@@ -659,10 +695,21 @@ import { slug, safeUrl } from "@/lib/validate";
 export const Tags: CollectionConfig = {
   slug: "tags",
   admin: { useAsTitle: "name", defaultColumns: ["name", "slug", "category"] },
-  access: { read: () => true, create: isAdmin, update: isAdmin, delete: isAdmin },
+  access: {
+    read: () => true,
+    create: isAdmin,
+    update: isAdmin,
+    delete: isAdmin,
+  },
   fields: [
     { name: "name", type: "text", required: true },
-    { name: "slug", type: "text", required: true, unique: true, validate: slug },
+    {
+      name: "slug",
+      type: "text",
+      required: true,
+      unique: true,
+      validate: slug,
+    },
     {
       name: "category",
       type: "select",

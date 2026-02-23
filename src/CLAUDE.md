@@ -5,6 +5,7 @@ Next.js app + Payload CMS: config, collections, app routes.
 ## Files
 
 - `payload.config.ts` — Payload config; loads `.env.local` via dotenv, Postgres pool, collections. Uses `requireEnv()` for required env. Upload limit: 10MB.
+- `instrumentation-client.ts` — Next.js client instrumentation; initializes PostHog (posthog-js) when `NEXT_PUBLIC_POSTHOG_KEY` set. No provider needed.
 - `collections/*.ts` — Payload collection defs: Users (role, access), Media, Tags, Listings
 - `lib/payload.ts` — getPayload() server helper (cached)
 - `lib/access.ts` — shared `isAdmin` (import as `@/lib/access`)
@@ -18,14 +19,14 @@ Next.js app + Payload CMS: config, collections, app routes.
 ## Patterns
 
 - ESM, path.resolve(process.cwd(), …) / path.dirname for paths
-- Env: DATABASE_URL, PAYLOAD_SECRET, NEXT_PUBLIC_SERVER_URL from `.env.local`
+- Env: DATABASE_URL, PAYLOAD_SECRET, NEXT_PUBLIC_SERVER_URL from `.env.local`; optional NEXT_PUBLIC_POSTHOG_KEY, NEXT_PUBLIC_POSTHOG_HOST for analytics
 - Required env vars: `requireEnv()` in payload.config (throws on missing)
 - Shared access + validation: use `@/lib/access`, `@/lib/validate`
 - Public pages: fetch in Server Components via getPayload(); notFound() for missing slug
 
 ## Deps
 
-- dotenv, payload, @payloadcms/db-postgres, sharp, next, @pandacss/dev, @park-ui/panda-preset, @ark-ui/react, postcss
+- dotenv, payload, @payloadcms/db-postgres, sharp, next, @pandacss/dev, @park-ui/panda-preset, @ark-ui/react, postcss, posthog-js
 
 ## Gotchas
 

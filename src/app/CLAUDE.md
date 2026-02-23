@@ -6,6 +6,7 @@ Next.js App Router: root layout, global CSS, route groups.
 
 - `layout.tsx` — Root layout; nav (Home, Listings), Panda css() body/nav styles
 - `globals.css` — Panda CSS layer directives
+- `not-found.tsx` — Global 404 page (heading, Home/Listings links)
 - `(payload)/` — Payload admin + API (layout, api/[...slug], admin/[[...segments]])
 - `(frontend)/` — Public pages: /, /listings, /listings/[slug], /tags/[slug]
 

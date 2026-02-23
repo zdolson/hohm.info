@@ -8,5 +8,10 @@ dist
 *.tsbuildinfo
 .pnpm-store
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
 # Supabase local
 supabase/.temp/

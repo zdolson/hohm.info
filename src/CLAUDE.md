@@ -1,19 +1,22 @@
 # src
+
 Next.js app + Payload CMS: config, collections, app routes.
 
 ## Files
+
 - `payload.config.ts` — Payload config; loads `.env.local` via dotenv, Postgres pool, collections. Uses `requireEnv()` for required env. Upload limit: 10MB.
 - `collections/*.ts` — Payload collection defs: Users (role, access), Media, Tags, Listings
 - `lib/payload.ts` — getPayload() server helper (cached)
 - `lib/access.ts` — shared `isAdmin` (import as `@/lib/access`)
 - `lib/validate.ts` — shared validators: `slug`, `safeUrl` (import as `@/lib/validate`)
 - `app/layout.tsx` — Root layout; nav (Home, Listings), imports `globals.css`
-- `app/globals.css` — Tailwind base/components/utilities
+- `app/globals.css` — Panda CSS layers (reset, base, tokens, recipes, utilities)
 - `app/(payload)/` — Payload admin + API routes
 - `app/(frontend)/` — Public routes: `page.tsx` (/), `listings/page.tsx`, `listings/[slug]/page.tsx`, `tags/[slug]/page.tsx`. Server Components; getPayload(), depth: 1 for relations.
 - `payload-types.ts` — generated; run `pnpm generate:types` to refresh
 
 ## Patterns
+
 - ESM, path.resolve(process.cwd(), …) / path.dirname for paths
 - Env: DATABASE_URL, PAYLOAD_SECRET, NEXT_PUBLIC_SERVER_URL from `.env.local`
 - Required env vars: `requireEnv()` in payload.config (throws on missing)
@@ -21,8 +24,10 @@ Next.js app + Payload CMS: config, collections, app routes.
 - Public pages: fetch in Server Components via getPayload(); notFound() for missing slug
 
 ## Deps
-- dotenv, payload, @payloadcms/db-postgres, sharp, next, tailwindcss, postcss
+
+- dotenv, payload, @payloadcms/db-postgres, sharp, next, @pandacss/dev, @park-ui/panda-preset, @ark-ui/react, postcss
 
 ## Gotchas
+
 - Local dev: DATABASE_URL points to `supabase start` (127.0.0.1:54322). Remote: use Supabase Session pooler URI (IPv4).
 - Encode DB password in URL if it contains `@#:/?` etc.

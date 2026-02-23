@@ -1,6 +1,6 @@
 const config = {
   plugins: {
-    tailwindcss: {},
+    "@pandacss/dev/postcss": {},
   },
 };
 export default config;

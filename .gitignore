@@ -1,6 +1,7 @@
 node_modules
 package-lock.json
 .next
+styled-system/
 .env
 .env*.local
 dist

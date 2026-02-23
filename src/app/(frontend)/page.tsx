@@ -1,16 +1,43 @@
 import Link from "next/link";
+import { Heading, Text } from "@/components/ui";
+import { css } from "styled-system/css";
 
 export default function HomePage() {
   return (
-    <main className="mx-auto max-w-4xl px-4 py-12">
-      <h1 className="text-3xl font-bold text-stone-900">hohm.info</h1>
-      <p className="mt-2 text-stone-600">
+    <main
+      className={css({
+        maxW: "4xl",
+        mx: "auto",
+        px: "4",
+        py: "12",
+      })}
+    >
+      <Heading
+        className={css({
+          fontSize: "3xl",
+          fontWeight: "bold",
+          color: "fg.default",
+        })}
+      >
+        hohm.info
+      </Heading>
+      <Text className={css({ mt: "2", color: "fg.muted" })}>
         Home listings with deep tag knowledge. Browse listings and explore tags
         for context on style, systems, hazards, and more.
-      </p>
+      </Text>
       <Link
         href="/listings"
-        className="mt-6 inline-block rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-800"
+        className={css({
+          mt: "6",
+          display: "inline-block",
+          rounded: "sm",
+          bg: "ruby.9",
+          color: "white",
+          px: "4",
+          py: "2",
+          fontWeight: "medium",
+          _hover: { bg: "ruby.10" },
+        })}
       >
         Browse listings
       </Link>

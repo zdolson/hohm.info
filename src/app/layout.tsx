@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { css } from "styled-system/css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,13 +15,47 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-stone-50 text-stone-900">
-        <nav className="border-b border-stone-200 bg-white px-4 py-3">
-          <div className="mx-auto flex max-w-4xl gap-4">
-            <Link href="/" className="font-semibold text-stone-900 hover:underline">
+      <body
+        className={css({
+          minHeight: "screen",
+          bg: "bg.canvas",
+          color: "fg.default",
+        })}
+      >
+        <nav
+          className={css({
+            borderBottomWidth: "1px",
+            borderColor: "gray.6",
+            bg: "gray.2",
+            px: "4",
+            py: "3",
+          })}
+        >
+          <div
+            className={css({
+              maxW: "4xl",
+              mx: "auto",
+              display: "flex",
+              gap: "4",
+            })}
+          >
+            <Link
+              href="/"
+              className={css({
+                fontWeight: "semibold",
+                color: "fg.default",
+                _hover: { textDecoration: "underline" },
+              })}
+            >
               Home
             </Link>
-            <Link href="/listings" className="text-stone-600 hover:underline">
+            <Link
+              href="/listings"
+              className={css({
+                color: "fg.muted",
+                _hover: { textDecoration: "underline" },
+              })}
+            >
               Listings
             </Link>
           </div>

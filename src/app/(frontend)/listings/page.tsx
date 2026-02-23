@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getPayload } from "@/lib/payload";
 import type { Listing, Tag } from "@/payload-types";
+import * as Card from "@/components/ui/card";
+import { Badge, Heading, Text } from "@/components/ui";
+import { css } from "styled-system/css";
 
 const LIMIT = 10;
 
@@ -9,7 +12,9 @@ type Props = {
   searchParams: Promise<{ tag?: string; page?: string }>;
 };
 
-export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+export async function generateMetadata({
+  searchParams,
+}: Props): Promise<Metadata> {
   const { tag } = await searchParams;
   const title = tag ? `Listings: ${tag} | hohm.info` : "Listings | hohm.info";
   return { title };
@@ -17,11 +22,17 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
 function TagChip({ tag }: { tag: Tag }) {
   return (
-    <Link
-      href={`/listings?tag=${encodeURIComponent(tag.slug)}`}
-      className="rounded bg-stone-200 px-2 py-0.5 text-sm text-stone-700 hover:bg-stone-300"
-    >
-      {tag.name}
+    <Link href={`/listings?tag=${encodeURIComponent(tag.slug)}`}>
+      <Badge
+        size="sm"
+        variant="subtle"
+        className={css({
+          _hover: { bg: "gray.4" },
+          cursor: "pointer",
+        })}
+      >
+        {tag.name}
+      </Badge>
     </Link>
   );
 }
@@ -56,59 +67,142 @@ export default async function ListingsPage({ searchParams }: Props) {
     sort: "-updatedAt",
   });
 
-  const { docs, totalPages, page: currentPage, hasNextPage, hasPrevPage } = result;
+  const {
+    docs,
+    totalPages,
+    page: currentPage,
+    hasNextPage,
+    hasPrevPage,
+  } = result;
   const current = currentPage ?? page;
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-stone-900">
+    <main
+      className={css({
+        maxW: "4xl",
+        mx: "auto",
+        px: "4",
+        py: "8",
+      })}
+    >
+      <Heading
+        className={css({
+          fontSize: "2xl",
+          fontWeight: "bold",
+          color: "fg.default",
+        })}
+      >
         {tagSlug ? `Listings: ${tagSlug}` : "Listings"}
-      </h1>
+      </Heading>
       {tagSlug && (
-        <p className="mt-1 text-stone-600">
-          <Link href="/listings" className="hover:underline">
+        <Text className={css({ mt: "1", color: "fg.muted" })}>
+          <Link
+            href="/listings"
+            className={css({ _hover: { textDecoration: "underline" } })}
+          >
             Clear filter
           </Link>
-        </p>
+        </Text>
       )}
-      <ul className="mt-6 space-y-4">
+      <ul
+        className={css({
+          mt: "6",
+          display: "flex",
+          flexDir: "column",
+          gap: "4",
+        })}
+      >
         {docs.map((listing: Listing) => (
-          <li key={listing.id} className="rounded border border-stone-200 bg-white p-4 shadow-sm">
-            <Link href={`/listings/${listing.slug}`} className="block hover:opacity-90">
-              <h2 className="font-semibold text-stone-900">{listing.title}</h2>
-              {(listing.address || listing.city || listing.state) && (
-                <p className="mt-1 text-sm text-stone-600">
-                  [{(listing.address && `${listing.address}, `) ?? ""}
-                  {[listing.city, listing.state].filter(Boolean).join(", ")}]
-                </p>
+          <li key={listing.id}>
+            <Card.Root
+              className={css({
+                rounded: "sm",
+                borderWidth: "1px",
+                borderColor: "gray.6",
+                bg: "gray.2",
+                p: "4",
+                shadow: "sm",
+              })}
+            >
+              <Link
+                href={`/listings/${listing.slug}`}
+                className={css({ display: "block", _hover: { opacity: 0.9 } })}
+              >
+                <Card.Header>
+                  <Card.Title>
+                    <Heading
+                      className={css({
+                        fontSize: "md",
+                        fontWeight: "semibold",
+                        color: "fg.default",
+                      })}
+                    >
+                      {listing.title}
+                    </Heading>
+                  </Card.Title>
+                </Card.Header>
+                <Card.Body className={css({ pt: "1" })}>
+                  {(listing.address || listing.city || listing.state) && (
+                    <Text
+                      className={css({ fontSize: "sm", color: "fg.muted" })}
+                    >
+                      [{(listing.address && `${listing.address}, `) ?? ""}
+                      {[listing.city, listing.state].filter(Boolean).join(", ")}
+                      ]
+                    </Text>
+                  )}
+                  {(listing.interior?.bedrooms != null ||
+                    listing.interior?.bathroomsFull != null ||
+                    listing.price != null) && (
+                    <Text
+                      className={css({
+                        mt: "1",
+                        fontSize: "sm",
+                        color: "fg.subtle",
+                      })}
+                    >
+                      {[
+                        listing.interior?.bedrooms != null &&
+                          `${listing.interior.bedrooms} bed`,
+                        listing.interior?.bathroomsFull != null &&
+                          `${listing.interior.bathroomsFull} bath`,
+                        listing.price != null &&
+                          `$${listing.price.toLocaleString()}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Text>
+                  )}
+                </Card.Body>
+              </Link>
+              {listing.tags && listing.tags.length > 0 && (
+                <div
+                  className={css({
+                    mt: "2",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "1",
+                  })}
+                >
+                  {listing.tags.filter(isTag).map((t) => (
+                    <TagChip key={t.id} tag={t} />
+                  ))}
+                </div>
               )}
-              {(listing.interior?.bedrooms != null ||
-                listing.interior?.bathroomsFull != null ||
-                listing.price != null) && (
-                <p className="mt-1 text-sm text-stone-500">
-                  {[
-                    listing.interior?.bedrooms != null && `${listing.interior.bedrooms} bed`,
-                    listing.interior?.bathroomsFull != null &&
-                      `${listing.interior.bathroomsFull} bath`,
-                    listing.price != null && `$${listing.price.toLocaleString()}`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              )}
-            </Link>
-            {listing.tags && listing.tags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {listing.tags.filter(isTag).map((t) => (
-                  <TagChip key={t.id} tag={t} />
-                ))}
-              </div>
-            )}
+            </Card.Root>
           </li>
         ))}
       </ul>
       {(hasPrevPage || hasNextPage) && (
-        <nav className="mt-6 flex gap-4" aria-label="Pagination">
+        <nav
+          className={css({
+            mt: "6",
+            display: "flex",
+            gap: "4",
+            alignItems: "center",
+          })}
+          aria-label="Pagination"
+        >
           {hasPrevPage && (
             <Link
               href={
@@ -116,14 +210,17 @@ export default async function ListingsPage({ searchParams }: Props) {
                   ? `/listings?tag=${encodeURIComponent(tagSlug)}&page=${current - 1}`
                   : `/listings?page=${current - 1}`
               }
-              className="text-stone-600 hover:underline"
+              className={css({
+                color: "fg.muted",
+                _hover: { textDecoration: "underline" },
+              })}
             >
               Previous
             </Link>
           )}
-          <span className="text-stone-500">
+          <Text className={css({ color: "fg.subtle" })}>
             Page {current} of {totalPages}
-          </span>
+          </Text>
           {hasNextPage && (
             <Link
               href={
@@ -131,7 +228,10 @@ export default async function ListingsPage({ searchParams }: Props) {
                   ? `/listings?tag=${encodeURIComponent(tagSlug)}&page=${current + 1}`
                   : `/listings?page=${current + 1}`
               }
-              className="text-stone-600 hover:underline"
+              className={css({
+                color: "fg.muted",
+                _hover: { textDecoration: "underline" },
+              })}
             >
               Next
             </Link>

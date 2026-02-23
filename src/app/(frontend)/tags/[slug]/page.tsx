@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { getPayload } from "@/lib/payload";
 import { convertLexicalToHTML } from "@payloadcms/richtext-lexical/html";
 import type { Tag, Media } from "@/payload-types";
+import { Badge, Heading, Text } from "@/components/ui";
+import { css } from "styled-system/css";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -43,45 +45,109 @@ export default async function TagPage({ params }: Props) {
   const mediaItems = (tag.media ?? []).filter(isMedia);
   const richHtml =
     tag.content?.root != null
-      ? convertLexicalToHTML({ data: tag.content as Parameters<typeof convertLexicalToHTML>[0]["data"] })
+      ? convertLexicalToHTML({
+          data: tag.content as Parameters<
+            typeof convertLexicalToHTML
+          >[0]["data"],
+        })
       : "";
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
-      <Link href="/listings" className="text-stone-600 hover:underline">
+    <main
+      className={css({
+        maxW: "4xl",
+        mx: "auto",
+        px: "4",
+        py: "8",
+      })}
+    >
+      <Link
+        href="/listings"
+        className={css({
+          color: "fg.muted",
+          _hover: { textDecoration: "underline" },
+        })}
+      >
         ← Listings
       </Link>
-      <article className="mt-4">
-        <h1 className="text-2xl font-bold text-stone-900">{tag.name}</h1>
+      <article className={css({ mt: "4" })}>
+        <Heading
+          className={css({
+            fontSize: "2xl",
+            fontWeight: "bold",
+            color: "fg.default",
+          })}
+        >
+          {tag.name}
+        </Heading>
         {tag.category && (
-          <p className="mt-1 text-sm uppercase tracking-wide text-stone-500">
-            {tag.category}
-          </p>
+          <span className={css({ display: "inline-block", mt: "1" })}>
+            <Badge
+              size="sm"
+              variant="subtle"
+              className={css({
+                textTransform: "uppercase",
+                letterSpacing: "wider",
+              })}
+            >
+              {tag.category}
+            </Badge>
+          </span>
         )}
         {tag.description && (
-          <p className="mt-4 text-stone-700">{tag.description}</p>
+          <Text className={css({ mt: "4", color: "fg.default" })}>
+            {tag.description}
+          </Text>
         )}
         {richHtml && (
           <div
-            className="prose prose-stone mt-6 max-w-none"
+            className={css({
+              mt: "6",
+              maxW: "none",
+              "& prose": { color: "fg.default" },
+              "& a": {
+                color: "fg.muted",
+                _hover: { textDecoration: "underline" },
+              },
+            })}
             dangerouslySetInnerHTML={{ __html: richHtml }}
           />
         )}
         {tag.resources && tag.resources.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-lg font-semibold text-stone-900">Resources</h2>
-            <ul className="mt-2 space-y-2">
+          <section className={css({ mt: "8" })}>
+            <Heading
+              className={css({
+                fontSize: "lg",
+                fontWeight: "semibold",
+                color: "fg.default",
+              })}
+            >
+              Resources
+            </Heading>
+            <ul
+              className={css({
+                mt: "2",
+                display: "flex",
+                flexDir: "column",
+                gap: "2",
+              })}
+            >
               {tag.resources.map((r, i) => (
                 <li key={i}>
                   <a
                     href={r.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-stone-600 hover:underline"
+                    className={css({
+                      color: "fg.muted",
+                      _hover: { textDecoration: "underline" },
+                    })}
                   >
                     {r.label}
                     {r.type && (
-                      <span className="ml-1 text-stone-400">({r.type})</span>
+                      <span className={css({ ml: "1", color: "fg.subtle" })}>
+                        ({r.type})
+                      </span>
                     )}
                   </a>
                 </li>
@@ -90,16 +156,35 @@ export default async function TagPage({ params }: Props) {
           </section>
         )}
         {mediaItems.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-lg font-semibold text-stone-900">Media</h2>
-            <ul className="mt-2 flex flex-wrap gap-2">
+          <section className={css({ mt: "8" })}>
+            <Heading
+              className={css({
+                fontSize: "lg",
+                fontWeight: "semibold",
+                color: "fg.default",
+              })}
+            >
+              Media
+            </Heading>
+            <ul
+              className={css({
+                mt: "2",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "2",
+              })}
+            >
               {mediaItems.map((m) => (
                 <li key={m.id}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={m.url ?? ""}
                     alt={m.alt ?? tag.name}
-                    className="max-h-40 rounded object-cover"
+                    className={css({
+                      maxH: "40",
+                      rounded: "sm",
+                      objectFit: "cover",
+                    })}
                   />
                 </li>
               ))}

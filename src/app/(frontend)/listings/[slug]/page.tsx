@@ -3,6 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPayload } from "@/lib/payload";
 import type { Listing, Tag, Media } from "@/payload-types";
+import * as Card from "@/components/ui/card";
+import { Badge, Heading, Text } from "@/components/ui";
+import { css } from "styled-system/css";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -57,116 +60,314 @@ export default async function ListingDetailPage({ params }: Props) {
   const photos = (listing.photos ?? []).filter(isMedia);
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
-      <Link href="/listings" className="text-stone-600 hover:underline">
+    <main
+      className={css({
+        maxW: "4xl",
+        mx: "auto",
+        px: "4",
+        py: "8",
+      })}
+    >
+      <Link
+        href="/listings"
+        className={css({
+          color: "fg.muted",
+          _hover: { textDecoration: "underline" },
+        })}
+      >
         ← Listings
       </Link>
-      <article className="mt-4">
-        <h1 className="text-2xl font-bold text-stone-900">{listing.title}</h1>
+      <article className={css({ mt: "4" })}>
+        <Heading
+          className={css({
+            fontSize: "2xl",
+            fontWeight: "bold",
+            color: "fg.default",
+          })}
+        >
+          {listing.title}
+        </Heading>
         {(listing.address || listing.city || listing.state) && (
-          <p className="mt-1 text-stone-600">
+          <Text className={css({ mt: "1", color: "fg.muted" })}>
             {listing.address}
             {[listing.city, listing.state].filter(Boolean).length > 0 &&
               `, ${[listing.city, listing.state].filter(Boolean).join(", ")}`}
-          </p>
+          </Text>
         )}
         {listing.price != null && (
-          <p className="mt-2 text-lg font-semibold">${listing.price.toLocaleString()}</p>
+          <Text
+            className={css({ mt: "2", fontSize: "lg", fontWeight: "semibold" })}
+          >
+            ${listing.price.toLocaleString()}
+          </Text>
         )}
-        {listing.summary && <p className="mt-4 text-stone-700">{listing.summary}</p>}
+        {listing.summary && (
+          <Text className={css({ mt: "4", color: "fg.default" })}>
+            {listing.summary}
+          </Text>
+        )}
 
-        {/* Field groups */}
-        <div className="mt-6 grid gap-6 sm:grid-cols-2">
-          {listing.location && (listing.location.zipCode || listing.location.county) && (
-            <section>
-              <h2 className="text-sm font-semibold uppercase text-stone-500">Location</h2>
-              <ul className="mt-1 text-stone-700">
-                {listing.location.zipCode && <li>ZIP: {listing.location.zipCode}</li>}
-                {listing.location.county && <li>County: {listing.location.county}</li>}
-              </ul>
-            </section>
-          )}
+        <div
+          className={css({
+            mt: "6",
+            display: "grid",
+            gap: "6",
+            gridTemplateColumns: { base: "1fr", sm: "repeat(2, 1fr)" },
+          })}
+        >
+          {listing.location &&
+            (listing.location.zipCode || listing.location.county) && (
+              <Card.Root
+                className={css({
+                  p: "4",
+                  rounded: "sm",
+                  borderWidth: "1px",
+                  borderColor: "gray.6",
+                  bg: "gray.2",
+                })}
+              >
+                <Card.Header>
+                  <Card.Title>
+                    <Text
+                      className={css({
+                        fontSize: "sm",
+                        fontWeight: "semibold",
+                        color: "fg.subtle",
+                        textTransform: "uppercase",
+                      })}
+                    >
+                      Location
+                    </Text>
+                  </Card.Title>
+                </Card.Header>
+                <Card.Body>
+                  <ul className={css({ mt: "1", color: "fg.default" })}>
+                    {listing.location.zipCode && (
+                      <li>ZIP: {listing.location.zipCode}</li>
+                    )}
+                    {listing.location.county && (
+                      <li>County: {listing.location.county}</li>
+                    )}
+                  </ul>
+                </Card.Body>
+              </Card.Root>
+            )}
           {listing.property && (
-            <section>
-              <h2 className="text-sm font-semibold uppercase text-stone-500">Property</h2>
-              <ul className="mt-1 text-stone-700">
-                {listing.property.propertyType && (
-                  <li>Type: {listing.property.propertyType}</li>
-                )}
-                {listing.property.status && <li>Status: {listing.property.status}</li>}
-                {listing.property.stories != null && (
-                  <li>Stories: {listing.property.stories}</li>
-                )}
-              </ul>
-            </section>
-          )}
-          {listing.interior && (
-            <section>
-              <h2 className="text-sm font-semibold uppercase text-stone-500">Interior</h2>
-              <ul className="mt-1 text-stone-700">
-                {listing.interior.bedrooms != null && (
-                  <li>Bedrooms: {listing.interior.bedrooms}</li>
-                )}
-                {(listing.interior.bathroomsFull != null ||
-                  listing.interior.bathroomsHalf != null) && (
-                  <li>
-                    Baths:{" "}
-                    {[listing.interior.bathroomsFull, listing.interior.bathroomsHalf]
-                      .filter((n) => n != null)
-                      .join(" + ")}
-                  </li>
-                )}
-                {listing.interior.squareFootage != null && (
-                  <li>Sq ft: {listing.interior.squareFootage.toLocaleString()}</li>
-                )}
-                {listing.interior.fireplaces != null && listing.interior.fireplaces > 0 && (
-                  <li>Fireplaces: {listing.interior.fireplaces}</li>
-                )}
-              </ul>
-            </section>
-          )}
-          {listing.lot?.lotSize != null && (
-            <section>
-              <h2 className="text-sm font-semibold uppercase text-stone-500">Lot</h2>
-              <p className="mt-1 text-stone-700">Lot size: {listing.lot.lotSize} sq ft</p>
-            </section>
-          )}
-          {listing.financial &&
-            (listing.financial.annualTaxes != null || listing.financial.taxYear != null) && (
-              <section>
-                <h2 className="text-sm font-semibold uppercase text-stone-500">Financial</h2>
-                <ul className="mt-1 text-stone-700">
-                  {listing.financial.annualTaxes != null && (
-                    <li>Annual taxes: ${listing.financial.annualTaxes.toLocaleString()}</li>
+            <Card.Root
+              className={css({
+                p: "4",
+                rounded: "sm",
+                borderWidth: "1px",
+                borderColor: "gray.6",
+                bg: "gray.2",
+              })}
+            >
+              <Card.Header>
+                <Card.Title>
+                  <Text
+                    className={css({
+                      fontSize: "sm",
+                      fontWeight: "semibold",
+                      color: "fg.subtle",
+                      textTransform: "uppercase",
+                    })}
+                  >
+                    Property
+                  </Text>
+                </Card.Title>
+              </Card.Header>
+              <Card.Body>
+                <ul className={css({ mt: "1", color: "fg.default" })}>
+                  {listing.property.propertyType && (
+                    <li>Type: {listing.property.propertyType}</li>
                   )}
-                  {listing.financial.taxYear != null && (
-                    <li>Tax year: {listing.financial.taxYear}</li>
+                  {listing.property.status && (
+                    <li>Status: {listing.property.status}</li>
+                  )}
+                  {listing.property.stories != null && (
+                    <li>Stories: {listing.property.stories}</li>
                   )}
                 </ul>
-              </section>
+              </Card.Body>
+            </Card.Root>
+          )}
+          {listing.interior && (
+            <Card.Root
+              className={css({
+                p: "4",
+                rounded: "sm",
+                borderWidth: "1px",
+                borderColor: "gray.6",
+                bg: "gray.2",
+              })}
+            >
+              <Card.Header>
+                <Card.Title>
+                  <Text
+                    className={css({
+                      fontSize: "sm",
+                      fontWeight: "semibold",
+                      color: "fg.subtle",
+                      textTransform: "uppercase",
+                    })}
+                  >
+                    Interior
+                  </Text>
+                </Card.Title>
+              </Card.Header>
+              <Card.Body>
+                <ul className={css({ mt: "1", color: "fg.default" })}>
+                  {listing.interior.bedrooms != null && (
+                    <li>Bedrooms: {listing.interior.bedrooms}</li>
+                  )}
+                  {(listing.interior.bathroomsFull != null ||
+                    listing.interior.bathroomsHalf != null) && (
+                    <li>
+                      Baths:{" "}
+                      {[
+                        listing.interior.bathroomsFull,
+                        listing.interior.bathroomsHalf,
+                      ]
+                        .filter((n) => n != null)
+                        .join(" + ")}
+                    </li>
+                  )}
+                  {listing.interior.squareFootage != null && (
+                    <li>
+                      Sq ft: {listing.interior.squareFootage.toLocaleString()}
+                    </li>
+                  )}
+                  {listing.interior.fireplaces != null &&
+                    listing.interior.fireplaces > 0 && (
+                      <li>Fireplaces: {listing.interior.fireplaces}</li>
+                    )}
+                </ul>
+              </Card.Body>
+            </Card.Root>
+          )}
+          {listing.lot?.lotSize != null && (
+            <Card.Root
+              className={css({
+                p: "4",
+                rounded: "sm",
+                borderWidth: "1px",
+                borderColor: "gray.6",
+                bg: "gray.2",
+              })}
+            >
+              <Card.Header>
+                <Card.Title>
+                  <Text
+                    className={css({
+                      fontSize: "sm",
+                      fontWeight: "semibold",
+                      color: "fg.subtle",
+                      textTransform: "uppercase",
+                    })}
+                  >
+                    Lot
+                  </Text>
+                </Card.Title>
+              </Card.Header>
+              <Card.Body>
+                <Text className={css({ mt: "1", color: "fg.default" })}>
+                  Lot size: {listing.lot.lotSize} sq ft
+                </Text>
+              </Card.Body>
+            </Card.Root>
+          )}
+          {listing.financial &&
+            (listing.financial.annualTaxes != null ||
+              listing.financial.taxYear != null) && (
+              <Card.Root
+                className={css({
+                  p: "4",
+                  rounded: "sm",
+                  borderWidth: "1px",
+                  borderColor: "gray.6",
+                  bg: "gray.2",
+                })}
+              >
+                <Card.Header>
+                  <Card.Title>
+                    <Text
+                      className={css({
+                        fontSize: "sm",
+                        fontWeight: "semibold",
+                        color: "fg.subtle",
+                        textTransform: "uppercase",
+                      })}
+                    >
+                      Financial
+                    </Text>
+                  </Card.Title>
+                </Card.Header>
+                <Card.Body>
+                  <ul className={css({ mt: "1", color: "fg.default" })}>
+                    {listing.financial.annualTaxes != null && (
+                      <li>
+                        Annual taxes: $
+                        {listing.financial.annualTaxes.toLocaleString()}
+                      </li>
+                    )}
+                    {listing.financial.taxYear != null && (
+                      <li>Tax year: {listing.financial.taxYear}</li>
+                    )}
+                  </ul>
+                </Card.Body>
+              </Card.Root>
             )}
         </div>
 
         {listing.garageSpaces != null && listing.garageSpaces > 0 && (
-          <p className="mt-4 text-stone-700">Garage: {listing.garageSpaces} space(s)</p>
+          <Text className={css({ mt: "4", color: "fg.default" })}>
+            Garage: {listing.garageSpaces} space(s)
+          </Text>
         )}
         {listing.yearBuilt != null && (
-          <p className="mt-1 text-stone-700">Year built: {listing.yearBuilt}</p>
+          <Text className={css({ mt: "1", color: "fg.default" })}>
+            Year built: {listing.yearBuilt}
+          </Text>
         )}
 
-        {/* Listing events timeline */}
         {listing.listingEvents && listing.listingEvents.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-lg font-semibold text-stone-900">Listing history</h2>
-            <ul className="mt-2 space-y-1 border-l-2 border-stone-200 pl-4">
+          <section className={css({ mt: "8" })}>
+            <Heading
+              className={css({
+                fontSize: "lg",
+                fontWeight: "semibold",
+                color: "fg.default",
+              })}
+            >
+              Listing history
+            </Heading>
+            <ul
+              className={css({
+                mt: "2",
+                display: "flex",
+                flexDir: "column",
+                gap: "1",
+                borderLeftWidth: "2px",
+                borderColor: "gray.6",
+                pl: "4",
+              })}
+            >
               {[...listing.listingEvents]
                 .sort(
                   (a, b) =>
                     new Date(b.date).getTime() - new Date(a.date).getTime()
                 )
                 .map((evt, i) => (
-                  <li key={i} className="text-sm text-stone-700">
-                    <span className="font-medium text-stone-500">
+                  <li
+                    key={i}
+                    className={css({ fontSize: "sm", color: "fg.default" })}
+                  >
+                    <span
+                      className={css({
+                        fontWeight: "medium",
+                        color: "fg.subtle",
+                      })}
+                    >
                       {new Date(evt.date).toLocaleDateString()}
                     </span>{" "}
                     {EVENT_LABELS[evt.eventType] ?? evt.eventType}
@@ -177,18 +378,36 @@ export default async function ListingDetailPage({ params }: Props) {
           </section>
         )}
 
-        {/* Photos */}
         {photos.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-lg font-semibold text-stone-900">Photos</h2>
-            <ul className="mt-2 flex flex-wrap gap-2">
+          <section className={css({ mt: "8" })}>
+            <Heading
+              className={css({
+                fontSize: "lg",
+                fontWeight: "semibold",
+                color: "fg.default",
+              })}
+            >
+              Photos
+            </Heading>
+            <ul
+              className={css({
+                mt: "2",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "2",
+              })}
+            >
               {photos.map((photo) => (
                 <li key={photo.id}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={photo.url ?? ""}
                     alt={photo.alt ?? listing.title}
-                    className="max-h-48 rounded object-cover"
+                    className={css({
+                      maxH: "48",
+                      rounded: "sm",
+                      objectFit: "cover",
+                    })}
                   />
                 </li>
               ))}
@@ -196,18 +415,37 @@ export default async function ListingDetailPage({ params }: Props) {
           </section>
         )}
 
-        {/* Tags */}
         {tags.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-lg font-semibold text-stone-900">Tags</h2>
-            <div className="mt-2 flex flex-wrap gap-2">
+          <section className={css({ mt: "8" })}>
+            <Heading
+              className={css({
+                fontSize: "lg",
+                fontWeight: "semibold",
+                color: "fg.default",
+              })}
+            >
+              Tags
+            </Heading>
+            <div
+              className={css({
+                mt: "2",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "2",
+              })}
+            >
               {tags.map((tag) => (
-                <Link
-                  key={tag.id}
-                  href={`/tags/${tag.slug}`}
-                  className="rounded bg-stone-200 px-3 py-1 text-sm text-stone-700 hover:bg-stone-300"
-                >
-                  {tag.name}
+                <Link key={tag.id} href={`/tags/${tag.slug}`}>
+                  <Badge
+                    size="sm"
+                    variant="subtle"
+                    className={css({
+                      _hover: { bg: "gray.4" },
+                      cursor: "pointer",
+                    })}
+                  >
+                    {tag.name}
+                  </Badge>
                 </Link>
               ))}
             </div>
@@ -215,16 +453,19 @@ export default async function ListingDetailPage({ params }: Props) {
         )}
 
         {listing.sourceUrl && (
-          <p className="mt-6">
+          <Text className={css({ mt: "6" })}>
             <a
               href={listing.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-stone-600 hover:underline"
+              className={css({
+                color: "fg.muted",
+                _hover: { textDecoration: "underline" },
+              })}
             >
               View source
             </a>
-          </p>
+          </Text>
         )}
       </article>
     </main>

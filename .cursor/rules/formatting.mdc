@@ -1,0 +1,12 @@
+---
+description: Enforce code formatting after file edits
+alwaysApply: true
+---
+
+# Formatting
+
+- Project uses Prettier + ESLint for formatting/linting.
+- After editing TS/TSX files, run `pnpm format` before finishing.
+- Do NOT commit unformatted code.
+- Prettier config: `.prettierrc` (semi, double quotes, trailing commas).
+- ESLint: `next lint` via `eslint-config-next`.

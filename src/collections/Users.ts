@@ -10,7 +10,8 @@ export const Users: CollectionConfig = {
     // Single-doc requests: admin or self.
     read: ({ req, id }) =>
       (req.user as { role?: string; id?: string } | null)?.role === "admin" ||
-      (id != null && String((req.user as { id?: string } | null)?.id) === String(id)),
+      (id != null &&
+        String((req.user as { id?: string } | null)?.id) === String(id)),
     create: isAdmin,
     update: isAdmin,
     delete: isAdmin,

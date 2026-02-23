@@ -42,7 +42,13 @@ export const Listings: CollectionConfig = {
   },
   fields: [
     { name: "title", type: "text", required: true },
-    { name: "slug", type: "text", required: true, unique: true, validate: slug },
+    {
+      name: "slug",
+      type: "text",
+      required: true,
+      unique: true,
+      validate: slug,
+    },
     { name: "address", type: "text" },
     { name: "city", type: "text" },
     { name: "state", type: "text" },
@@ -109,7 +115,10 @@ export const Listings: CollectionConfig = {
     {
       name: "listingEvents",
       type: "array",
-      admin: { description: "Price/status history; price and status at root are denormalized for filtering." },
+      admin: {
+        description:
+          "Price/status history; price and status at root are denormalized for filtering.",
+      },
       fields: [
         { name: "date", type: "date", required: true },
         {

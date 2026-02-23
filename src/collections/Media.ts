@@ -3,7 +3,10 @@ import { isAdmin } from "@/lib/access";
 
 export const Media: CollectionConfig = {
   slug: "media",
-  admin: { useAsTitle: "filename", defaultColumns: ["filename", "mimeType", "updatedAt"] },
+  admin: {
+    useAsTitle: "filename",
+    defaultColumns: ["filename", "mimeType", "updatedAt"],
+  },
   access: {
     read: () => true,
     create: isAdmin,
@@ -11,7 +14,11 @@ export const Media: CollectionConfig = {
     delete: isAdmin,
   },
   fields: [
-    { name: "alt", type: "text", admin: { description: "Accessibility/SEO alt text" } },
+    {
+      name: "alt",
+      type: "text",
+      admin: { description: "Accessibility/SEO alt text" },
+    },
     { name: "caption", type: "text" },
   ],
   upload: {

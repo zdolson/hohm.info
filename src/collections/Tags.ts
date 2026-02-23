@@ -16,7 +16,13 @@ export const Tags: CollectionConfig = {
   },
   fields: [
     { name: "name", type: "text", required: true },
-    { name: "slug", type: "text", required: true, unique: true, validate: slug },
+    {
+      name: "slug",
+      type: "text",
+      required: true,
+      unique: true,
+      validate: slug,
+    },
     {
       name: "category",
       type: "select",

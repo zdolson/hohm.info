@@ -1,6 +1,79 @@
 import type { ScrapedProperty, ScrapedEvent } from "../fetcher";
 
 const ACTOR = "maxcopell~zillow-scraper";
+const MAX_PHOTO_URLS = 20;
+
+/** Extract photo URLs from Zillow/Apify result; tries several shapes. Dedup, max 20. */
+export function extractPhotoUrls(data: unknown): string[] {
+  const seen = new Set<string>();
+  const add = (url: string | undefined) => {
+    if (typeof url === "string" && url.startsWith("http")) {
+      seen.add(url);
+    }
+  };
+  const d = data as Record<string, unknown>;
+
+  // 1. data.photos[].url or data.photos[] (string)
+  const photos = d?.photos;
+  if (Array.isArray(photos)) {
+    for (const p of photos) {
+      if (typeof p === "string") add(p);
+      else if (p && typeof p === "object" && "url" in p)
+        add((p as { url: string }).url);
+    }
+  }
+  // 2. carouselPhotos[].url or .mixedSources.jpeg[0].url
+  const carousel = d?.carouselPhotos;
+  if (Array.isArray(carousel)) {
+    for (const c of carousel) {
+      if (c && typeof c === "object") {
+        const o = c as Record<string, unknown>;
+        if (typeof o.url === "string") add(o.url);
+        const jpeg = o.mixedSources as { jpeg?: unknown[] } | undefined;
+        if (
+          Array.isArray(jpeg?.jpeg) &&
+          jpeg.jpeg[0] &&
+          typeof jpeg.jpeg[0] === "object" &&
+          jpeg.jpeg[0] !== null &&
+          "url" in jpeg.jpeg[0]
+        ) {
+          add((jpeg.jpeg[0] as { url: string }).url);
+        }
+      }
+    }
+  }
+  // 3. data.images[] (string or .url)
+  const images = d?.images;
+  if (Array.isArray(images)) {
+    for (const img of images) {
+      if (typeof img === "string") add(img);
+      else if (img && typeof img === "object" && "url" in img)
+        add((img as { url: string }).url);
+    }
+  }
+  // 4. hiResPicture
+  if (typeof d?.hiResPicture === "string") add(d.hiResPicture);
+  // 5. miniCardPhotos[].url
+  const mini = d?.miniCardPhotos;
+  if (Array.isArray(mini)) {
+    for (const m of mini) {
+      if (m && typeof m === "object" && "url" in m)
+        add((m as { url: string }).url);
+    }
+  }
+
+  return [...seen].slice(0, MAX_PHOTO_URLS);
+}
+
+/** Extract listing description from Zillow/Apify result. */
+export function extractDescription(data: unknown): string | undefined {
+  const d = data as Record<string, unknown>;
+  const raw =
+    (typeof d?.description === "string" && d.description) ||
+    (typeof d?.homeDescription === "string" && d.homeDescription) ||
+    (typeof d?.Description === "string" && d.Description);
+  return typeof raw === "string" && raw.length > 0 ? raw.trim() : undefined;
+}
 const APIFY_BASE = "https://api.apify.com/v2";
 
 function mapEventType(label: string): ScrapedEvent["eventType"] | null {
@@ -94,6 +167,8 @@ function mapZillowResult(data: any): ScrapedProperty {
     listingEvents,
     rawAttributes,
     sourceUrl: data.url || data.hdpUrl || data.detailUrl || undefined,
+    photoUrls: extractPhotoUrls(data),
+    description: extractDescription(data),
   };
 }
 
@@ -106,10 +181,13 @@ export async function fetchZillow(address: string): Promise<ScrapedProperty> {
   const searchUrl = `https://www.zillow.com/homes/${encodedAddress}_rb/`;
 
   const response = await fetch(
-    `${APIFY_BASE}/acts/${ACTOR}/run-sync-get-dataset-items?token=${token}&timeout=60`,
+    `${APIFY_BASE}/acts/${ACTOR}/run-sync-get-dataset-items?timeout=60`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({
         searchUrls: [{ url: searchUrl }],
         maxItems: 1,

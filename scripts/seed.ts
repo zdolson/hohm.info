@@ -1,5 +1,5 @@
 /**
- * Seed tags and listings (Phase 1b). Run: pnpm seed
+ * Seed tags and listings (Phase 1b). Run: pnpm import:seed
  * Requires DATABASE_URL and PAYLOAD_SECRET in .env.local
  *
  * Tags: ~20 across 12 categories with description + resources.

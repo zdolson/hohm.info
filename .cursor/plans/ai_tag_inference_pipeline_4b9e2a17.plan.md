@@ -1,73 +1,73 @@
 ---
 name: AI Tag Inference Pipeline
-overview: "LLM-powered tag inference layer replacing naive string-matching. Downloads listing photos, runs vision+text analysis via local Ollama (qwen3-vl:8b), matches/proposes tags against DB catalog, emits human-reviewable JSON proposal before any DB writes. Test-first build order."
+overview: LLM-powered tag inference layer replacing naive string-matching. Downloads listing photos, runs vision+text analysis via local Ollama (qwen3-vl:8b), matches/proposes tags against DB catalog, emits human-reviewable JSON proposal before any DB writes. Test-first build order.
 todos:
   - id: step0-deps
     content: "Install missing dependencies: openai, zod, zod-to-json-schema"
-    status: pending
+    status: completed
   - id: step1-tags-export
-    content: "Export tagCategoryOptions as const + TagCategoryValue from src/collections/Tags.ts"
-    status: pending
+    content: Export tagCategoryOptions as const + TagCategoryValue from src/collections/Tags.ts
+    status: completed
   - id: step2-unit-tests
     content: "Write all unit tests (RED): llm-schema, llm-prompt, photo-url, apply-proposal, input-fingerprint"
-    status: pending
+    status: completed
   - id: step3-schema
-    content: "Implement scripts/lib/llm/schema.ts — Zod schemas + inferenceJsonSchema"
-    status: pending
+    content: Implement scripts/lib/llm/schema.ts — Zod schemas + inferenceJsonSchema
+    status: completed
   - id: step4-prompt
-    content: "Implement scripts/lib/llm/prompt.ts — system + user prompt builders, PROMPT_VERSION"
-    status: pending
+    content: Implement scripts/lib/llm/prompt.ts — system + user prompt builders, PROMPT_VERSION
+    status: completed
   - id: step5-download-photos
-    content: "Implement scripts/lib/download-photos.ts — isTrustedPhotoUrl, downloadPhotos, uploadPhotosToMedia"
-    status: pending
+    content: Implement scripts/lib/download-photos.ts — isTrustedPhotoUrl, downloadPhotos, uploadPhotosToMedia
+    status: completed
   - id: step6-apply-proposal
-    content: "Implement scripts/lib/apply-proposal.ts — shared tag create + listing update helper"
-    status: pending
+    content: Implement scripts/lib/apply-proposal.ts — shared tag create + listing update helper
+    status: completed
   - id: step7-ai-tag-inference
-    content: "Implement scripts/lib/ai-tag-inference.ts — orchestrator + computeInputFingerprint"
-    status: pending
+    content: Implement scripts/lib/ai-tag-inference.ts — orchestrator + computeInputFingerprint
+    status: completed
   - id: step8-tests-green
-    content: "Run pnpm test — confirm all unit tests GREEN"
-    status: pending
+    content: Run pnpm test — confirm all unit tests GREEN
+    status: completed
   - id: step9-llm-types
-    content: "Implement scripts/lib/llm/types.ts — LLMProvider interface, LLMConfig, message types"
-    status: pending
+    content: Implement scripts/lib/llm/types.ts — LLMProvider interface, LLMConfig, message types
+    status: completed
   - id: step10-llm-ollama
-    content: "Implement scripts/lib/llm/ollama.ts — OpenAI-compatible provider, single + two-pass mode"
-    status: pending
+    content: Implement scripts/lib/llm/ollama.ts — OpenAI-compatible provider, single + two-pass mode
+    status: completed
   - id: step11-llm-config
-    content: "Implement scripts/lib/llm/config.ts — createProvider() factory, isLLMConfigured()"
-    status: pending
+    content: Implement scripts/lib/llm/config.ts — createProvider() factory, isLLMConfigured()
+    status: completed
   - id: step12-media-bytes
-    content: "Implement scripts/lib/media-bytes.ts — local FS byte reader for Payload media docs"
-    status: pending
+    content: Implement scripts/lib/media-bytes.ts — local FS byte reader for Payload media docs
+    status: completed
   - id: step13-enrich-listing
-    content: "Implement scripts/enrich-listing.ts — standalone CLI with all flags"
-    status: pending
+    content: Implement scripts/enrich-listing.ts — standalone CLI with all flags
+    status: completed
   - id: step14-apply-tags
-    content: "Implement scripts/apply-tags.ts — load + validate proposal JSON, apply to DB"
-    status: pending
+    content: Implement scripts/apply-tags.ts — load + validate proposal JSON, apply to DB
+    status: completed
   - id: step15-fetcher
-    content: "Update scripts/lib/fetcher.ts — add photoUrls?, description? to ScrapedProperty"
-    status: pending
+    content: Update scripts/lib/fetcher.ts — add photoUrls?, description? to ScrapedProperty
+    status: completed
   - id: step16-zillow
-    content: "Update scripts/lib/fetchers/zillow.ts — add extractPhotoUrls() + extractDescription()"
-    status: pending
+    content: Update scripts/lib/fetchers/zillow.ts — add extractPhotoUrls() + extractDescription()
+    status: completed
   - id: step17-import-address
-    content: "Update scripts/import-address.ts — add photo download (step 8) + AI inference (step 9)"
-    status: pending
+    content: Update scripts/import-address.ts — add photo download (step 8) + AI inference (step 9)
+    status: completed
   - id: step18-package-json
-    content: "Update package.json — add enrich-listing + apply-tags scripts"
-    status: pending
+    content: Update package.json — add enrich-listing + apply-tags scripts
+    status: completed
   - id: step19-env-example
-    content: "Update .env.example — add LLM_* placeholders with qwen3-vl:8b defaults"
-    status: pending
+    content: Update .env.example — add LLM_* placeholders with qwen3-vl:8b defaults
+    status: completed
   - id: step20-gitignore
-    content: "Update .gitignore — ignore scripts/output/tag-proposals/*.json"
-    status: pending
+    content: Update .gitignore — ignore scripts/output/tag-proposals/*.json
+    status: completed
   - id: step21-output-dir
-    content: "Create scripts/output/.gitkeep"
-    status: pending
+    content: Create scripts/output/.gitkeep
+    status: completed
   - id: step22-e2e-dry-run
     content: "End-to-end dry run: import address --skip-inference, then enrich-listing --dry-run, review proposal JSON"
     status: pending

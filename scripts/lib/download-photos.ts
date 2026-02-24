@@ -32,51 +32,58 @@ export function isTrustedPhotoUrl(url: string): boolean {
 const DEFAULT_MAX_PHOTOS = 20;
 const TIMEOUT_MS = 10_000;
 
+async function fetchPhoto(
+  url: string,
+  listingSlug: string,
+  idx: number
+): Promise<DownloadedPhoto | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      console.warn(`[WARN] Photo fetch failed ${res.status}: ${url}`);
+      return null;
+    }
+    const raw = Buffer.from(await res.arrayBuffer());
+    let resized: Buffer = raw;
+    try {
+      resized = await sharp(raw)
+        .resize(1024, 1024, { fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+    } catch {
+      // keep original if sharp can't process
+    }
+    return {
+      buffer: resized,
+      mimeType: "image/jpeg",
+      filename: `${listingSlug}-photo-${idx}.jpg`,
+    };
+  } catch (err) {
+    console.warn(`[WARN] Photo download failed: ${(err as Error).message}`);
+    return null;
+  }
+}
+
 export async function downloadPhotos(
   urls: string[],
   listingSlug: string,
   opts?: { maxPhotos?: number }
 ): Promise<DownloadedPhoto[]> {
   const maxPhotos = opts?.maxPhotos ?? DEFAULT_MAX_PHOTOS;
-  const results: DownloadedPhoto[] = [];
-
-  for (const url of urls) {
-    if (results.length >= maxPhotos) break;
-    if (!isTrustedPhotoUrl(url)) {
+  const candidates = urls
+    .filter((url) => {
+      if (isTrustedPhotoUrl(url)) return true;
       console.warn(`[WARN] Skipping untrusted photo URL: ${url}`);
-      continue;
-    }
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
-      if (!res.ok) {
-        console.warn(`[WARN] Photo fetch failed ${res.status}: ${url}`);
-        continue;
-      }
-      const raw = Buffer.from(await res.arrayBuffer());
-      let resized: Buffer = raw;
-      try {
-        resized = await sharp(raw)
-          .resize(1024, 1024, { fit: "inside", withoutEnlargement: true })
-          .jpeg({ quality: 80 })
-          .toBuffer();
-      } catch {
-        // keep original if sharp can't process
-      }
-      const idx = results.length;
-      results.push({
-        buffer: resized,
-        mimeType: "image/jpeg",
-        filename: `${listingSlug}-photo-${idx}.jpg`,
-      });
-    } catch (err) {
-      console.warn(`[WARN] Photo download failed: ${(err as Error).message}`);
-    }
-  }
-
-  return results.slice(0, maxPhotos);
+      return false;
+    })
+    .slice(0, maxPhotos);
+  const settled = await Promise.all(
+    candidates.map((url, idx) => fetchPhoto(url, listingSlug, idx))
+  );
+  return settled.filter((r): r is DownloadedPhoto => r !== null);
 }
 
 export async function uploadPhotosToMedia(

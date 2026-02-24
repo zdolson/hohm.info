@@ -38,4 +38,8 @@ export interface ScrapedProperty {
   /** Raw attribute strings from scraper, e.g. ['Forced Air', 'Brick', 'Full Basement'] */
   rawAttributes: string[];
   sourceUrl?: string;
+  /** Photo URLs from scraper (e.g. Zillow); download + upload to media in import-address */
+  photoUrls?: string[];
+  /** Listing description from scraper */
+  description?: string;
 }

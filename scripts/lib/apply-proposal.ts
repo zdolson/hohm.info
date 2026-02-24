@@ -53,6 +53,7 @@ export async function applyProposal(
       resolvedIds.push(existingId);
       continue;
     }
+    created++;
     if (opts.dryRun) {
       console.log(
         `[DRY-RUN] Would create tag: ${candidateSlug} (${prop.category})`
@@ -74,9 +75,9 @@ export async function applyProposal(
       const id = doc.id as number;
       catalogSlugToId.set(actualSlug, id);
       resolvedIds.push(id);
-      created++;
       console.log(`[CREATED TAG] ${actualSlug} (${prop.category})`);
     } catch (err) {
+      created--;
       console.warn(
         `[WARN] Could not create tag ${candidateSlug}: ${(err as Error).message}`
       );
@@ -85,7 +86,7 @@ export async function applyProposal(
 
   if (result.newCategoryProposals.length > 0) {
     console.warn(
-      "[WARN] New categories require updating Tags.ts enum + pnpm generate:types — manual step"
+      "[WARN] New categories require updating Tags.ts enum + pnpm payload:types — manual step"
     );
     for (const cat of result.newCategoryProposals) {
       console.warn(

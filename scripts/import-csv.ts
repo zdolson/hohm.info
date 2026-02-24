@@ -1,6 +1,6 @@
 /**
  * Import tags and/or listings from CSV files.
- * Run: pnpm import-csv --tags <file> [--listings <file>] [--dry-run]
+ * Run: pnpm import:csv --tags <file> [--listings <file>] [--dry-run]
  */
 import path from "path";
 import { fileURLToPath } from "url";
@@ -34,7 +34,7 @@ async function main() {
   const args = parseArgs();
   if (!args.tags && !args.listings) {
     console.error(
-      "Usage: pnpm import-csv [--tags <file>] [--listings <file>] [--dry-run]"
+      "Usage: pnpm import:csv [--tags <file>] [--listings <file>] [--dry-run]"
     );
     process.exit(1);
   }

@@ -37,7 +37,7 @@ export interface ListingCreateData {
   financial?: { annualTaxes?: number; taxYear?: number };
   listingEvents?: Array<{
     date: string;
-    eventType: string;
+    eventType: ScrapedProperty["listingEvents"][number]["eventType"];
     price?: number;
     source?: string;
     mlsNumber?: string;

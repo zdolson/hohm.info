@@ -1,5 +1,16 @@
 import { createHash } from "crypto";
 import type { TagCategoryValue } from "@/collections/Tags";
+import type { LLMProvider } from "./llm/types";
+import {
+  buildSystemPrompt,
+  buildUserPrompt,
+  PROMPT_VERSION,
+} from "./llm/prompt";
+import {
+  inferenceOutputSchema,
+  inferenceJsonSchema,
+  type InferenceOutput,
+} from "./llm/schema";
 
 export interface InferenceInput {
   listing: {
@@ -66,4 +77,51 @@ export function computeInputFingerprint(
     ...input.photos.map((b) => createHash("sha256").update(b).digest("hex")),
   ].join("|");
   return createHash("sha256").update(normalized).digest("hex");
+}
+
+export interface InferenceResult extends InferenceOutput {
+  provider: string;
+  model: string;
+  tokenUsage: { inputTokens: number; outputTokens: number };
+}
+
+const LLM_MAX_PHOTOS = Math.max(
+  0,
+  parseInt(process.env.LLM_MAX_PHOTOS ?? "6", 10) || 6
+);
+
+export async function inferTags(
+  provider: LLMProvider,
+  input: InferenceInput,
+  opts: { maxNewTags: number; maxTokens?: number }
+): Promise<InferenceResult> {
+  const systemPrompt = buildSystemPrompt({
+    existingTags: input.existingTags,
+    maxNewTags: opts.maxNewTags,
+  });
+  const userText = buildUserPrompt({ listing: input.listing });
+  const photoBuffers = input.photos.slice(0, LLM_MAX_PHOTOS);
+  const content: Array<
+    | { type: "text"; text: string }
+    | { type: "image"; data: Buffer; mimeType: string }
+  > = [{ type: "text", text: userText }];
+  for (const buf of photoBuffers) {
+    content.push({ type: "image", data: buf, mimeType: "image/jpeg" });
+  }
+  const messages = [
+    { role: "system" as const, content: systemPrompt },
+    { role: "user" as const, content: content.length > 1 ? content : userText },
+  ];
+  const res = await provider.chat(messages, {
+    jsonSchema: inferenceJsonSchema as Record<string, unknown>,
+    maxTokens: opts.maxTokens ?? 4096,
+  });
+  const parsed = JSON.parse(res.content) as unknown;
+  const validated = inferenceOutputSchema.parse(parsed);
+  return {
+    ...validated,
+    provider: provider.name,
+    model: res.model,
+    tokenUsage: res.tokenUsage,
+  };
 }

@@ -15,3 +15,6 @@ blob-report/
 
 # Supabase local
 supabase/.temp/
+
+# Tag proposals (human review)
+scripts/output/tag-proposals/*.json

@@ -15,11 +15,16 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [{ "name": "next" }],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "paths": {
-      "@/*": ["./src/*"],
+      "@/*": ["./src/*", "./scripts/*"],
       "@payload-config": ["./src/payload.config.ts"],
-      "styled-system/*": ["./styled-system/*"]
+      "styled-system/*": ["./styled-system/*"],
+      "@/scripts/*": ["./scripts/*"]
     }
   },
   "include": [

@@ -53,7 +53,7 @@ function mapZillowResult(data: any): ScrapedProperty {
   }
 
   const listingEvents: ScrapedEvent[] = [];
-   
+
   if (Array.isArray(data.PriceHistory)) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const ev of data.PriceHistory as any[]) {

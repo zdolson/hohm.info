@@ -4,7 +4,7 @@ Vitest (unit + integration) and Playwright (e2e).
 
 ## Layout
 
-- `unit/` — pure logic, no DB
+- `unit/` — pure logic, no DB. Scripts: use `@/scripts/lib/…` alias (see tsconfig paths).
 - `integration/` — Payload API; need `DATABASE_URL` + `PAYLOAD_SECRET` (.env.local). Skip gracefully if missing.
 - `e2e/` — Playwright; `pnpm test:e2e`, run `npx playwright install` once. `admin.spec.ts` (admin load); `frontend.spec.ts` (/, /listings, listing/tag detail, tag filter, 404). E2E assumes seeded DB for slug-based tests.
 

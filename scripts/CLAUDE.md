@@ -16,6 +16,11 @@ CLI scripts for seeding and importing data. Run via `pnpm <script>`.
 - `lib/fetchers/trulia.ts` — Trulia HTML price history (cheerio).
 - `lib/infer-tags.ts` — Map scraped attribute strings → tag slugs.
 - `lib/normalize.ts` — `normalizeToListing(scraped, tagIds)` → Payload listing shape.
+- `lib/llm/schema.ts` — Zod inference + proposal schemas; `inferenceJsonSchema` for LLM response_format.
+- `lib/llm/prompt.ts` — `buildSystemPrompt`, `buildUserPrompt`, `PROMPT_VERSION`.
+- `lib/download-photos.ts` — `isTrustedPhotoUrl`, `downloadPhotos(listingSlug, …)`, `uploadPhotosToMedia`.
+- `lib/apply-proposal.ts` — `applyProposal(listingId, currentTagIds, result, catalogSlugToId, payload, opts)`; slugify fallback, uses Payload `doc.slug`.
+- `lib/ai-tag-inference.ts` — `InferenceInput`, `computeInputFingerprint` (SHA-256 of normalized input).
 
 ## Examples
 

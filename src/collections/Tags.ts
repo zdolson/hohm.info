@@ -2,6 +2,23 @@ import type { CollectionConfig } from "payload";
 import { isAdmin } from "@/lib/access";
 import { slug, safeUrl } from "@/lib/validate";
 
+export const tagCategoryOptions = [
+  { label: "Style", value: "style" },
+  { label: "Exterior", value: "exterior" },
+  { label: "Roofing", value: "roofing" },
+  { label: "Structure", value: "structure" },
+  { label: "Systems", value: "systems" },
+  { label: "Utilities", value: "utilities" },
+  { label: "Interior", value: "interior" },
+  { label: "Parking", value: "parking" },
+  { label: "Features", value: "features" },
+  { label: "Hazards", value: "hazards" },
+  { label: "Era", value: "era" },
+  { label: "Region", value: "region" },
+] as const;
+
+export type TagCategoryValue = (typeof tagCategoryOptions)[number]["value"];
+
 export const Tags: CollectionConfig = {
   slug: "tags",
   admin: {
@@ -26,20 +43,7 @@ export const Tags: CollectionConfig = {
     {
       name: "category",
       type: "select",
-      options: [
-        { label: "Style", value: "style" },
-        { label: "Exterior", value: "exterior" },
-        { label: "Roofing", value: "roofing" },
-        { label: "Structure", value: "structure" },
-        { label: "Systems", value: "systems" },
-        { label: "Utilities", value: "utilities" },
-        { label: "Interior", value: "interior" },
-        { label: "Parking", value: "parking" },
-        { label: "Features", value: "features" },
-        { label: "Hazards", value: "hazards" },
-        { label: "Era", value: "era" },
-        { label: "Region", value: "region" },
-      ],
+      options: [...tagCategoryOptions],
     },
     { name: "description", type: "textarea" },
     { name: "content", type: "richText" },

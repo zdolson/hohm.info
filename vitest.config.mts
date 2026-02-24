@@ -9,10 +9,17 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "node",
-    include: ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx", "tests/integration/**/*.test.ts"],
+    include: [
+      "tests/unit/**/*.test.ts",
+      "tests/unit/**/*.test.tsx",
+      "tests/integration/**/*.test.ts",
+    ],
     globals: true,
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: [
+      { find: "@/scripts", replacement: path.resolve(__dirname, "./scripts") },
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+    ],
   },
 });

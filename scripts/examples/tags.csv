@@ -1,0 +1,5 @@
+name,slug,category,description,resources
+Slate Roof,slate-roof,roofing,Natural slate tiles — very durable (75–150 yr lifespan) but heavy and expensive to repair.,"[{""label"":""Slate roof guide"",""url"":""https://www.thisoldhouse.com/roofing/21017788/all-about-slate-roofing"",""type"":""guide""},{""label"":""Cost estimator"",""url"":""https://www.homeadvisor.com/cost/roofing/install-a-slate-roof/"",""type"":""cost""}]"
+Copper Plumbing,copper-plumbing,systems,Durable copper supply pipes; antimicrobial and long-lived. Watch for pinhole leaks in acidic-water areas.,"[{""label"":""Copper pipe care"",""url"":""https://www.familyhandyman.com/article/copper-pipe/"",""type"":""guide""}]"
+Off-Street Parking,off-street-parking,parking,Parking on the property but not in a garage — driveway or pad.,
+Lead Paint,lead-paint,hazards,Pre-1978 homes likely have lead paint. Requires EPA-certified contractor for disturbing painted surfaces.,"[{""label"":""EPA lead paint info"",""url"":""https://www.epa.gov/lead/learn-about-lead"",""type"":""link""},{""label"":""Testing guide"",""url"":""https://www.cdc.gov/nceh/lead/prevention/testing.htm"",""type"":""guide""}]"

@@ -109,40 +109,40 @@ todos:
     status: pending
   - id: p4-install-deps
     content: Install csv-parse (pnpm add csv-parse) and cheerio (pnpm add cheerio) for CSV import + Trulia HTML scraping.
-    status: pending
+    status: completed
   - id: p4-parse-tags-csv
     content: "Create scripts/lib/parse-tags-csv.ts: parse + validate tags.csv rows. Validate name/slug (regex /^[a-z0-9]+(?:-[a-z0-9]+)*$/), category (12-value enum), optional resources (JSON array: label/url/type). Return RowResult<TagRow>[] with ok rows + error rows carrying index + messages."
-    status: pending
+    status: completed
   - id: p4-parse-listings-csv
     content: "Create scripts/lib/parse-listings-csv.ts: parse + validate listings.csv rows. Map dot-notation columns to nested groups (location/property/interior/lot/financial). Parse tags column (comma-separated slugs). Parse listingEvents (JSON array column: {date,eventType,price?,source?,mlsNumber?}). Validate enums (propertyType, status, eventType), numerics (>= 0), sourceUrl (/^https?:\\/\\//). Return RowResult<ListingRow>[]."
-    status: pending
+    status: completed
   - id: p4-csv-script
     content: "Create scripts/import-csv.ts: CLI entry point. Args: --tags <file>, --listings <file>, --dry-run. Init Payload (dotenv.config + getPayload from seed.ts pattern). Import tags first (find-by-slug, skip if exists). Build slug->id map. Import listings (resolve tag slugs to IDs, skip if slug exists). Log [CREATED]/[SKIP]/[WARN]/[DRY-RUN]/[ERROR] per row. Print summary. Exit 1 on any errors."
-    status: pending
+    status: completed
   - id: p4-csv-examples
     content: "Create scripts/examples/tags.csv (3+ rows across categories, one with resources JSON) and scripts/examples/listings.csv (2 rows: one full with listingEvents JSON, one minimal). Column header row documents all columns."
-    status: pending
+    status: completed
   - id: p4-fetcher-interface
     content: "Create scripts/lib/fetcher.ts: TypeScript interface ScrapedProperty { title?, address, city, state, zipCode?, county?, yearBuilt?, price?, beds?, bathsFull?, bathsHalf?, sqft?, lotSize?, stories?, propertyType?, status?, garageSpaces?, fireplaces?, annualTaxes?, taxYear?, listingEvents: ScrapedEvent[], rawAttributes: string[], sourceUrl? } and ScrapedEvent { date, eventType, price?, source?, mlsNumber? }."
-    status: pending
+    status: completed
   - id: p4-zillow-fetcher
     content: "Create scripts/lib/fetchers/zillow.ts: fetchZillow(address: string): Promise<ScrapedProperty>. Use Apify REST API (actor maxcopell/zillow-scraper; APIFY_TOKEN from env). POST run-sync-get-dataset-items, extract first result. Map Zillow fields (Bedrooms, BathroomsFull, LivingArea, LotAreaValue, YearBuilt, Stories, GarageSpaces, Heating, Flooring, RoofType, Description, MlsId, PriceHistory array) to ScrapedProperty. Populate rawAttributes from Heating/Flooring/RoofType/Foundation/Sewer/Exterior strings."
-    status: pending
+    status: completed
   - id: p4-trulia-fetcher
     content: "Create scripts/lib/fetchers/trulia.ts: fetchTruliaHistory(address: string): Promise<ScrapedEvent[]>. Build Trulia URL from address. Fetch HTML (native fetch). Parse price history table with cheerio: extract date, event label, price rows. Map labels: 'Listed For Sale'->listed, 'Price Change'->priceChange, 'Pending'->pending, 'PendingToActive'->active, 'Sold'->sold, 'Listed For Rent'->listedForRent, 'Listing Removed'->listingRemoved."
-    status: pending
+    status: completed
   - id: p4-tag-inference
     content: "Create scripts/lib/infer-tags.ts: ATTRIBUTE_TAG_MAP constant mapping scraped attribute strings to tag slugs (e.g. 'forced air'->forced-air-heating, 'brick'->brick-exterior, 'wood siding'->wood-exterior, 'knob and tube'->knob-and-tube-wiring, 'full basement'->full-basement, 'hardwood'->hardwood-floors, 'asphalt shingle'->asphalt-shingle, 'natural gas'->natural-gas, 'attached garage'->attached-garage, etc.). inferTagSlugs(attrs: string[]): string[] — lowercase each attr, test against map keys (substring match), return matched slugs. Log unmatched attrs."
-    status: pending
+    status: completed
   - id: p4-normalize
     content: "Create scripts/lib/normalize.ts: normalizeToListing(scraped: ScrapedProperty, tagIds: number[]): ListingCreateData. Map ScrapedProperty to Payload Listing shape (groups: location, property, interior, lot, financial), listingEvents array, tags as IDs. Derive slug: slugify(address + '-' + city + '-' + state) — lowercase, replace non-alphanumeric with hyphens, dedupe hyphens. Title defaults to address string."
-    status: pending
+    status: completed
   - id: p4-import-address-script
     content: "Create scripts/import-address.ts: CLI entry. Args: --address 'Street, City, ST' (repeatable), --file addresses.txt (one address per line), --dry-run, --skip-trulia. For each address: fetchZillow -> (unless --skip-trulia) fetchTruliaHistory -> merge events -> inferTagSlugs -> resolve slugs to IDs (payload.find; create missing tags with overrideAccess:true) -> normalizeToListing -> find-or-skip by slug -> payload.create(overrideAccess:true). Print per-address [FETCHED]/[CREATED]/[SKIP]/[ERROR]. Summary + exit 1 on errors."
-    status: pending
+    status: completed
   - id: p4-package-scripts
     content: "Add to package.json scripts: 'import-csv': 'tsx scripts/import-csv.ts', 'import-address': 'tsx scripts/import-address.ts'. Add APIFY_TOKEN placeholder to .env.example."
-    status: pending
+    status: completed
   - id: p4-verify
     content: "Verify CSV path: pnpm import-csv --tags scripts/examples/tags.csv --dry-run (no writes, correct log). Real import + re-run (idempotent). Verify address path: pnpm import-address --address '2115 Anderson Dr SE, East Grand Rapids, MI' --dry-run; then real import. Check admin UI: all fields, groups, listingEvents, and tag relations populated correctly."
     status: pending

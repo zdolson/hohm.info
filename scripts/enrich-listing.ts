@@ -1,6 +1,6 @@
 /**
  * Enrich listing(s) with AI-inferred tags. Writes proposal JSON or applies to DB.
- * Run: pnpm listing:enrich --slug <slug> | --all [--force] [--force-revalidate] [--auto-approve-tags] [--dry-run] [--max-new-tags N] [--no-tag-limit]
+ * Run: pnpm listing:enrich --slug <slug> | --all [--force] [--force-revalidate] [--auto-approve-tags] [--dry-run] [--batch] [--max-new-tags N] [--no-tag-limit]
  */
 import path from "path";
 import { fileURLToPath } from "url";
@@ -18,7 +18,9 @@ import {
   inferTags,
   computeInputFingerprint,
   type InferenceInput,
+  type InferenceResult,
 } from "./lib/ai-tag-inference";
+import { inferTagsBatch, type BatchInferenceItem } from "./lib/llm/batch";
 import { PROMPT_VERSION } from "./lib/llm/prompt";
 import { applyProposal } from "./lib/apply-proposal";
 import { readMediaBytesBatch } from "./lib/media-bytes";
@@ -28,7 +30,7 @@ import {
   setDebugMode,
   setDebugAddressSlug,
   getAddressDebugDir,
-} from "./lib/debug.js";
+} from "./lib/debug";
 
 const PROPOSALS_DIR = path.resolve(__dirname, "output", "tag-proposals");
 const DEFAULT_MAX_NEW_TAGS = Math.max(
@@ -43,6 +45,7 @@ function parseArgs(): {
   forceRevalidate: boolean;
   autoApproveTags: boolean;
   dryRun: boolean;
+  batch: boolean;
   maxNewTags: number;
   noTagLimit: boolean;
   debug: boolean;
@@ -54,6 +57,7 @@ function parseArgs(): {
   let forceRevalidate = false;
   let autoApproveTags = false;
   let dryRun = false;
+  let batch = false;
   let maxNewTags = DEFAULT_MAX_NEW_TAGS;
   let noTagLimit = false;
   let debug = false;
@@ -64,6 +68,7 @@ function parseArgs(): {
     else if (args[i] === "--force-revalidate") forceRevalidate = true;
     else if (args[i] === "--auto-approve-tags") autoApproveTags = true;
     else if (args[i] === "--dry-run") dryRun = true;
+    else if (args[i] === "--batch") batch = true;
     else if (args[i] === "--debug") debug = true;
     else if (args[i] === "--max-new-tags")
       maxNewTags = Math.max(0, parseInt(args[++i], 10) || 0);
@@ -77,6 +82,7 @@ function parseArgs(): {
     forceRevalidate,
     autoApproveTags,
     dryRun,
+    batch,
     maxNewTags,
     noTagLimit,
     debug,
@@ -155,6 +161,27 @@ async function fetchAllListings(
   return all;
 }
 
+function buildProposalJson(
+  listingSlug: string,
+  fingerprint: string,
+  result: InferenceResult,
+  photosAnalyzed: number
+) {
+  return {
+    listingSlug,
+    generatedAt: new Date().toISOString(),
+    provider: result.provider,
+    model: result.model,
+    inputFingerprint: fingerprint,
+    promptVersion: PROMPT_VERSION,
+    tokenUsage: result.tokenUsage,
+    photosAnalyzed,
+    existingTagSlugs: result.existingTagSlugs,
+    newTagProposals: result.newTagProposals,
+    newCategoryProposals: result.newCategoryProposals,
+  };
+}
+
 async function main(): Promise<void> {
   const opts = parseArgs();
   setDebugMode(opts.debug);
@@ -172,6 +199,13 @@ async function main(): Promise<void> {
   try {
     const provider = createProvider();
     const maxNewTags = opts.maxNewTags;
+
+    if (opts.batch && provider.name !== "gemini") {
+      console.error(
+        "[ERROR] --batch is only supported with Gemini. Set LLM_PROVIDER=gemini and GEMINI_API_KEY."
+      );
+      process.exit(1);
+    }
 
     const allTags = await fetchAllTags(payload);
     const catalogSlugToId = new Map<string, number>();
@@ -203,121 +237,238 @@ async function main(): Promise<void> {
       listings = await fetchAllListings(payload);
     }
 
-    for (const listing of listings) {
-      const tListing = Date.now();
-      const currentTagIds = (listing.tags ?? [])
-        .map((x) => (typeof x === "number" ? x : (x as Tag).id))
-        .filter((id): id is number => typeof id === "number");
-      if (currentTagIds.length > 0 && !opts.force) {
-        console.log(
-          `[SKIP] ${listing.slug} — already has tags (use --force to re-run)`
+    if (opts.batch) {
+      const batchItems: BatchInferenceItem[] = [];
+      const batchMeta: Array<{
+        listing: Listing;
+        currentTagIds: number[];
+        fingerprint: string;
+        proposalPath: string;
+        photoBuffers: Buffer[];
+      }> = [];
+      for (const listing of listings) {
+        const currentTagIds = (listing.tags ?? [])
+          .map((x) => (typeof x === "number" ? x : (x as Tag).id))
+          .filter((id): id is number => typeof id === "number");
+        if (currentTagIds.length > 0 && !opts.force) {
+          console.log(
+            `[SKIP] ${listing.slug} — already has tags (use --force to re-run)`
+          );
+          continue;
+        }
+        const photoRefs = listing.photos ?? [];
+        const mediaDocs = photoRefs.filter(
+          (p): p is Media =>
+            typeof p === "object" && p !== null && "filename" in p
+        ) as Media[];
+        const photoBuffers = (await readMediaBytesBatch(mediaDocs)).filter(
+          (b): b is Buffer => b !== null
         );
-        continue;
+        const inferenceListing = listingToInferenceListing(listing);
+        const input: InferenceInput = {
+          listing: inferenceListing,
+          photos: photoBuffers,
+          existingTags: existingTagsForPrompt,
+        };
+        const fingerprint = computeInputFingerprint(
+          input,
+          provider.name,
+          provider.config.model,
+          PROMPT_VERSION
+        );
+        const proposalPath = path.join(PROPOSALS_DIR, `${listing.slug}.json`);
+        let skipRevalidation = false;
+        if (fs.existsSync(proposalPath) && !opts.forceRevalidate) {
+          try {
+            const raw = JSON.parse(fs.readFileSync(proposalPath, "utf-8"));
+            const parsed = proposalFileSchema.safeParse(raw);
+            if (
+              parsed.success &&
+              parsed.data.inputFingerprint === fingerprint
+            ) {
+              skipRevalidation = true;
+              console.log(
+                `[SKIP] ${listing.slug} — revalidation not forced, fingerprint unchanged`
+              );
+            }
+          } catch {
+            // ignore
+          }
+        }
+        if (skipRevalidation) continue;
+        batchItems.push({ input, opts: { maxNewTags } });
+        batchMeta.push({
+          listing,
+          currentTagIds,
+          fingerprint,
+          proposalPath,
+          photoBuffers,
+        });
       }
-
-      const photoRefs = listing.photos ?? [];
-      const mediaDocs = photoRefs.filter(
-        (p): p is Media =>
-          typeof p === "object" && p !== null && "filename" in p
-      ) as Media[];
-      const photoBuffers = (await readMediaBytesBatch(mediaDocs)).filter(
-        (b): b is Buffer => b !== null
-      );
-
-      const inferenceListing = listingToInferenceListing(listing);
-      const input: InferenceInput = {
-        listing: inferenceListing,
-        photos: photoBuffers,
-        existingTags: existingTagsForPrompt,
-      };
-      const fingerprint = computeInputFingerprint(
-        input,
-        provider.name,
-        provider.config.model,
-        PROMPT_VERSION
-      );
-
-      const proposalPath = path.join(PROPOSALS_DIR, `${listing.slug}.json`);
-      let skipRevalidation = false;
-      if (fs.existsSync(proposalPath) && !opts.forceRevalidate) {
-        try {
-          const raw = JSON.parse(fs.readFileSync(proposalPath, "utf-8"));
-          const parsed = proposalFileSchema.safeParse(raw);
-          if (parsed.success && parsed.data.inputFingerprint === fingerprint) {
-            skipRevalidation = true;
+      if (batchItems.length === 0) {
+        console.log("[BATCH] No listings to infer.");
+      } else {
+        const results = await inferTagsBatch(provider.config, batchItems);
+        for (let i = 0; i < results.length; i++) {
+          const result = results[i];
+          const {
+            listing,
+            currentTagIds,
+            fingerprint,
+            proposalPath,
+            photoBuffers,
+          } = batchMeta[i];
+          if (result === null) {
             console.log(
-              `[SKIP] ${listing.slug} — revalidation not forced, fingerprint unchanged`
+              `[SKIP] ${batchMeta[i].listing.slug} — batch item failed, no tags applied`
+            );
+            continue;
+          }
+          console.log(
+            `[TOKENS] ${listing.slug} input=${result.tokenUsage.inputTokens} output=${result.tokenUsage.outputTokens} model=${result.model} provider=${result.provider}`
+          );
+          const proposal = buildProposalJson(
+            listing.slug,
+            fingerprint,
+            result,
+            photoBuffers.length
+          );
+          if (opts.autoApproveTags) {
+            await applyProposal(
+              listing.id,
+              currentTagIds,
+              result,
+              catalogSlugToId,
+              payload,
+              { dryRun: opts.dryRun, maxNewTags }
+            );
+            if (opts.dryRun) {
+              console.log(`[DRY-RUN] ${listing.slug} — no DB writes`);
+            } else {
+              console.log(`[APPLIED] ${listing.slug}`);
+            }
+          } else {
+            fs.mkdirSync(PROPOSALS_DIR, { recursive: true });
+            fs.writeFileSync(proposalPath, JSON.stringify(proposal, null, 2));
+            console.log(`[PROPOSAL] ${proposalPath}`);
+            console.log(
+              `  Run: pnpm listing:apply-tags ${proposalPath}${opts.dryRun ? " --dry-run" : ""}`
             );
           }
-        } catch {
-          // ignore
+          console.log(`[ENRICH] ${listing.slug} done`);
         }
       }
-      if (skipRevalidation) continue;
-
-      if (opts.debug) {
-        setDebugAddressSlug(listing.slug);
-        const dir = getAddressDebugDir();
-        if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true });
-        fs.mkdirSync(dir, { recursive: true });
-      }
-
-      let result;
-      try {
-        result = await inferTags(provider, input, {
-          maxNewTags,
-          debug: opts.debug,
-        });
-      } catch (err) {
-        console.error(
-          `[VALIDATION ERROR] ${listing.slug}: ${(err as Error).message}`
-        );
-        setDebugAddressSlug(null);
-        continue;
-      }
-      console.log(
-        `[TOKENS] ${listing.slug} input=${result.tokenUsage.inputTokens} output=${result.tokenUsage.outputTokens} model=${result.model} provider=${result.provider}`
-      );
-
-      const proposal = {
-        listingSlug: listing.slug,
-        generatedAt: new Date().toISOString(),
-        provider: result.provider,
-        model: result.model,
-        inputFingerprint: fingerprint,
-        promptVersion: PROMPT_VERSION,
-        tokenUsage: result.tokenUsage,
-        photosAnalyzed: photoBuffers.length,
-        existingTagSlugs: result.existingTagSlugs,
-        newTagProposals: result.newTagProposals,
-        newCategoryProposals: result.newCategoryProposals,
-      };
-
-      if (opts.autoApproveTags) {
-        await applyProposal(
-          listing.id,
-          currentTagIds,
-          result,
-          catalogSlugToId,
-          payload,
-          { dryRun: opts.dryRun, maxNewTags }
-        );
-        if (opts.dryRun) {
-          console.log(`[DRY-RUN] ${listing.slug} — no DB writes`);
-        } else {
-          console.log(`[APPLIED] ${listing.slug}`);
+    } else {
+      for (const listing of listings) {
+        const tListing = Date.now();
+        const currentTagIds = (listing.tags ?? [])
+          .map((x) => (typeof x === "number" ? x : (x as Tag).id))
+          .filter((id): id is number => typeof id === "number");
+        if (currentTagIds.length > 0 && !opts.force) {
+          console.log(
+            `[SKIP] ${listing.slug} — already has tags (use --force to re-run)`
+          );
+          continue;
         }
-      } else {
-        fs.mkdirSync(PROPOSALS_DIR, { recursive: true });
-        fs.writeFileSync(proposalPath, JSON.stringify(proposal, null, 2));
-        console.log(`[PROPOSAL] ${proposalPath}`);
+
+        const photoRefs = listing.photos ?? [];
+        const mediaDocs = photoRefs.filter(
+          (p): p is Media =>
+            typeof p === "object" && p !== null && "filename" in p
+        ) as Media[];
+        const photoBuffers = (await readMediaBytesBatch(mediaDocs)).filter(
+          (b): b is Buffer => b !== null
+        );
+
+        const inferenceListing = listingToInferenceListing(listing);
+        const input: InferenceInput = {
+          listing: inferenceListing,
+          photos: photoBuffers,
+          existingTags: existingTagsForPrompt,
+        };
+        const fingerprint = computeInputFingerprint(
+          input,
+          provider.name,
+          provider.config.model,
+          PROMPT_VERSION
+        );
+
+        const proposalPath = path.join(PROPOSALS_DIR, `${listing.slug}.json`);
+        let skipRevalidation = false;
+        if (fs.existsSync(proposalPath) && !opts.forceRevalidate) {
+          try {
+            const raw = JSON.parse(fs.readFileSync(proposalPath, "utf-8"));
+            const parsed = proposalFileSchema.safeParse(raw);
+            if (
+              parsed.success &&
+              parsed.data.inputFingerprint === fingerprint
+            ) {
+              skipRevalidation = true;
+              console.log(
+                `[SKIP] ${listing.slug} — revalidation not forced, fingerprint unchanged`
+              );
+            }
+          } catch {
+            // ignore
+          }
+        }
+        if (skipRevalidation) continue;
+
+        if (opts.debug) {
+          setDebugAddressSlug(listing.slug);
+          const dir = getAddressDebugDir();
+          if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true });
+          fs.mkdirSync(dir, { recursive: true });
+        }
+
+        let result;
+        try {
+          result = await inferTags(provider, input, {
+            maxNewTags,
+            debug: opts.debug,
+          });
+        } catch (err) {
+          console.error(`[ERROR]   ${listing.slug}: ${(err as Error).message}`);
+          setDebugAddressSlug(null);
+          continue;
+        }
         console.log(
-          `  Run: pnpm listing:apply-tags ${proposalPath}${opts.dryRun ? " --dry-run" : ""}`
+          `[TOKENS] ${listing.slug} input=${result.tokenUsage.inputTokens} output=${result.tokenUsage.outputTokens} model=${result.model} provider=${result.provider}`
         );
+
+        const proposal = buildProposalJson(
+          listing.slug,
+          fingerprint,
+          result,
+          photoBuffers.length
+        );
+
+        if (opts.autoApproveTags) {
+          await applyProposal(
+            listing.id,
+            currentTagIds,
+            result,
+            catalogSlugToId,
+            payload,
+            { dryRun: opts.dryRun, maxNewTags }
+          );
+          if (opts.dryRun) {
+            console.log(`[DRY-RUN] ${listing.slug} — no DB writes`);
+          } else {
+            console.log(`[APPLIED] ${listing.slug}`);
+          }
+        } else {
+          fs.mkdirSync(PROPOSALS_DIR, { recursive: true });
+          fs.writeFileSync(proposalPath, JSON.stringify(proposal, null, 2));
+          console.log(`[PROPOSAL] ${proposalPath}`);
+          console.log(
+            `  Run: pnpm listing:apply-tags ${proposalPath}${opts.dryRun ? " --dry-run" : ""}`
+          );
+        }
+        const elapsed = ((Date.now() - tListing) / 1000).toFixed(1);
+        console.log(`[ENRICH] ${listing.slug} done [${elapsed}s]`);
+        setDebugAddressSlug(null);
       }
-      const elapsed = ((Date.now() - tListing) / 1000).toFixed(1);
-      console.log(`[ENRICH] ${listing.slug} done [${elapsed}s]`);
-      setDebugAddressSlug(null);
     }
   } finally {
     if (typeof payload.db.destroy === "function") await payload.db.destroy();

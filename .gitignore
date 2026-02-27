@@ -16,5 +16,7 @@ blob-report/
 # Supabase local
 supabase/.temp/
 
-# Tag proposals (human review)
+# Script output (proposals, cache, debug dumps)
 scripts/output/tag-proposals/*.json
+scripts/output/scrape-cache/
+scripts/output/debug/

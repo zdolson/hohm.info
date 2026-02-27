@@ -20,6 +20,8 @@ CLI scripts for seeding and importing data. Run via `pnpm <script>`.
 - `lib/normalize.ts` — `normalizeToListing(scraped, tagIds)` → Payload listing shape.
 - `lib/llm/schema.ts` — Zod inference + proposal schemas; `inferenceJsonSchema` for LLM response_format.
 - `lib/llm/prompt.ts` — `buildSystemPrompt`, `buildUserPrompt`, `PROMPT_VERSION`.
+- `lib/llm/batch.ts` — Gemini-only `inferTagsBatch(config, items)` (Batch API, 50% cost); 20MB inline limit; `BatchInferenceItem`, polling until terminal state.
+- `lib/llm/cost.ts` — `estimateCost(model, tokenUsage, opts?)`; Gemini pricing; `opts.batch` for 50% discount.
 - `lib/download-photos.ts` — `isTrustedPhotoUrl`, `downloadPhotos(listingSlug, …)`, `uploadPhotosToMedia`.
 - `lib/apply-proposal.ts` — `applyProposal(listingId, currentTagIds, result, catalogSlugToId, payload, opts)`; slugify fallback, uses Payload `doc.slug`.
 - `lib/ai-tag-inference.ts` — `InferenceInput`, `computeInputFingerprint` (SHA-256 of normalized input), `inferTags(provider, input, opts)`; when `opts.debug` is true (or CLI `--debug`), writes to current address debug dir (see `lib/debug.ts`): `prompt.txt`, `photos/photo-0.jpg`, … Logs elapsed timestamps at inference stages.
@@ -32,5 +34,5 @@ CLI scripts for seeding and importing data. Run via `pnpm <script>`.
 ## Patterns
 
 - ESM; `dotenv.config({ path: path.resolve(process.cwd(), ".env.local") })` then `getPayload({ config })` from `../src/payload.config`.
-- Log prefixes: `[CREATED]`, `[SKIP]`, `[ERROR]`, `[DRY-RUN]`, `[FETCHED]`, `[BLOCKED]`, `[NOT_FOUND]`, `[CACHE]`, `[RETRY]`, `[WAIT]`, `[STATS]`.
+- Log prefixes: `[CREATED]`, `[SKIP]`, `[ERROR]`, `[DRY-RUN]`, `[FETCHED]`, `[BLOCKED]`, `[NOT_FOUND]`, `[CACHE]`, `[RETRY]`, `[WAIT]`, `[STATS]`, `[ADDRESS]`, `[PHOTOS]`, `[INFER]`, `[TOKENS]`, `[COST]`, `[BATCH]`, `[PROPOSAL]`, `[APPLIED]`, `[ENRICH]`.
 - Scrape cache: `output/scrape-cache/{slug}.json` — bypass with `--force-refetch`.

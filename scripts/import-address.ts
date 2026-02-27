@@ -1,15 +1,15 @@
 /**
  * Import listings by address or URL. Optional photo download + AI tag inference.
  * Run: pnpm import:address --address "Street, City, ST" [--sources trulia|zillow|zillow,trulia]
- *      [--file addresses.txt] [--dry-run] [--skip-photos] [--skip-inference]
+ *      [--file addresses.txt] [--dry-run] [--skip-photos] [--skip-inference] [--batch]
  *      [--strict-sources] [--delay-ms N] [--force-refetch]
  *      [--auto-approve-tags] [--max-new-tags N] [--force-revalidate]
  * Default source: env IMPORT_DEFAULT_SOURCES or "trulia" (no API keys required).
+ * --batch: defer inference and run one Gemini batch job (50% cost); Gemini only.
  */
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { readFileSync } from "fs";
 import dotenv from "dotenv";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,9 +40,23 @@ import {
   setDebugAddressSlug,
   getAddressDebugDir,
 } from "./lib/debug.js";
+import { inferTagsBatch, type BatchInferenceItem } from "./lib/llm/batch.js";
 
 const PROPOSALS_DIR = path.resolve(__dirname, "output", "tag-proposals");
 const SCRAPE_CACHE_DIR = path.resolve(__dirname, "output", "scrape-cache");
+
+/** When --batch: processAddress returns this instead of running inference. */
+export interface DeferredInferencePayload {
+  inferenceInput: InferenceInput;
+  listingId: number;
+  tagIds: number[];
+  fingerprint: string;
+  proposalPath: string;
+  photoBuffers: Buffer[];
+  catalogSlugToId: Map<string, number>;
+  maxNewTags: number;
+  listingSlug: string;
+}
 const DEFAULT_MAX_NEW_TAGS = Math.max(
   0,
   parseInt(process.env.LLM_MAX_NEW_TAGS ?? "30", 10) || 30
@@ -85,6 +99,7 @@ function parseArgs() {
     forceRevalidate: false,
     forceRefetch: false,
     debug: false,
+    batch: false,
     delayMs: Math.max(
       0,
       parseInt(process.env.IMPORT_DELAY_MS ?? "5000", 10) || 5000
@@ -113,6 +128,7 @@ function parseArgs() {
     else if (args[i] === "--force-revalidate") result.forceRevalidate = true;
     else if (args[i] === "--force-refetch") result.forceRefetch = true;
     else if (args[i] === "--debug") result.debug = true;
+    else if (args[i] === "--batch") result.batch = true;
     else if (args[i] === "--delay-ms")
       result.delayMs = Math.max(0, parseInt(args[++i], 10) || 0);
   }
@@ -133,8 +149,9 @@ async function processAddress(
     forceRevalidate: boolean;
     forceRefetch: boolean;
     debug: boolean;
+    returnDeferredInference?: boolean;
   }
-): Promise<boolean> {
+): Promise<boolean | { deferred: DeferredInferencePayload }> {
   const tAddress = Date.now();
   console.log(`\n[ADDRESS] ${address}`);
 
@@ -359,78 +376,90 @@ async function processAddress(
         `[SKIP]    Inference skipped — no photos, attributes, or description to analyze`
       );
     } else {
-      console.log(
-        `[INFER]   Starting AI tag inference (${downloadedPhotos.length} photos, ${scraped.rawAttributes.length} attributes)...`
-      );
-      try {
-        const provider = createProvider();
-        const tagsResult = await payload.find({
-          collection: "tags",
-          limit: 1000,
-          depth: 0,
+      const proposalPath = path.join(PROPOSALS_DIR, `${listingData.slug}.json`);
+      const provider = createProvider();
+      const tagsResult = await payload.find({
+        collection: "tags",
+        limit: 1000,
+        depth: 0,
+      });
+      const catalogSlugToId = new Map<string, number>();
+      const existingTagsForPrompt: InferenceInput["existingTags"] = [];
+      for (const t of tagsResult.docs as Tag[]) {
+        catalogSlugToId.set(t.slug, t.id);
+        existingTagsForPrompt.push({
+          slug: t.slug,
+          name: t.name,
+          category: t.category ?? "features",
+          description: t.description ?? undefined,
         });
-        const catalogSlugToId = new Map<string, number>();
-        const existingTagsForPrompt: InferenceInput["existingTags"] = [];
-        for (const t of tagsResult.docs as Tag[]) {
-          catalogSlugToId.set(t.slug, t.id);
-          existingTagsForPrompt.push({
-            slug: t.slug,
-            name: t.name,
-            category: t.category ?? "features",
-            description: t.description ?? undefined,
-          });
-        }
-
-        const photoBuffers = downloadedPhotos.map((p) => p.buffer);
-
-        const inferenceListing: InferenceInput["listing"] = {
-          slug: listingData.slug,
-          address: listingData.address,
-          city: listingData.city,
-          state: listingData.state,
-          yearBuilt: listingData.yearBuilt,
-          price: listingData.price,
-          description: scraped.description,
-          property: listingData.property,
-          interior: listingData.interior,
-          lot: listingData.lot,
-          garageSpaces: listingData.garageSpaces,
-          rawAttributes: scraped.rawAttributes,
-        };
-        const input: InferenceInput = {
-          listing: inferenceListing,
-          photos: photoBuffers,
-          existingTags: existingTagsForPrompt,
-        };
-        const fingerprint = computeInputFingerprint(
-          input,
-          provider.name,
-          provider.config.model,
-          PROMPT_VERSION
-        );
-        const proposalPath = path.join(
-          PROPOSALS_DIR,
-          `${listingData.slug}.json`
-        );
-        let skipRevalidation = false;
-        if (fs.existsSync(proposalPath) && !opts.forceRevalidate) {
-          try {
-            const raw = JSON.parse(fs.readFileSync(proposalPath, "utf-8"));
-            const parsed = proposalFileSchema.safeParse(raw);
-            if (
-              parsed.success &&
-              parsed.data.inputFingerprint === fingerprint
-            ) {
-              skipRevalidation = true;
-              console.log(
-                `[SKIP]    Inference skipped (fingerprint unchanged, use --force-revalidate to re-run)`
-              );
-            }
-          } catch {
-            // ignore
+      }
+      const photoBuffers = downloadedPhotos.map((p) => p.buffer);
+      const inferenceListing: InferenceInput["listing"] = {
+        slug: listingData.slug,
+        address: listingData.address,
+        city: listingData.city,
+        state: listingData.state,
+        yearBuilt: listingData.yearBuilt,
+        price: listingData.price,
+        description: scraped.description,
+        property: listingData.property,
+        interior: listingData.interior,
+        lot: listingData.lot,
+        garageSpaces: listingData.garageSpaces,
+        rawAttributes: scraped.rawAttributes,
+      };
+      const input: InferenceInput = {
+        listing: inferenceListing,
+        photos: photoBuffers,
+        existingTags: existingTagsForPrompt,
+      };
+      const fingerprint = computeInputFingerprint(
+        input,
+        provider.name,
+        provider.config.model,
+        PROMPT_VERSION
+      );
+      let skipRevalidation = false;
+      if (fs.existsSync(proposalPath) && !opts.forceRevalidate) {
+        try {
+          const raw = JSON.parse(fs.readFileSync(proposalPath, "utf-8"));
+          const parsed = proposalFileSchema.safeParse(raw);
+          if (parsed.success && parsed.data.inputFingerprint === fingerprint) {
+            skipRevalidation = true;
+            console.log(
+              `[SKIP]    Inference skipped (fingerprint unchanged, use --force-revalidate to re-run)`
+            );
           }
+        } catch {
+          // ignore
         }
-        if (!skipRevalidation) {
+      }
+      if (opts.returnDeferredInference === true && !skipRevalidation) {
+        if (listingId === null) {
+          console.log(
+            `[WARN]    Batch deferred but listing not created (dry-run?); skipping inference for ${listingData.slug}`
+          );
+        } else {
+          return {
+            deferred: {
+              inferenceInput: input,
+              listingId,
+              tagIds,
+              fingerprint,
+              proposalPath,
+              photoBuffers,
+              catalogSlugToId,
+              maxNewTags: opts.maxNewTags,
+              listingSlug: listingData.slug,
+            },
+          };
+        }
+      } else if (!skipRevalidation) {
+        console.log(
+          `[INFER]   Starting AI tag inference (${downloadedPhotos.length} photos, ${scraped.rawAttributes.length} attributes)...`
+        );
+        try {
           const result = await inferTags(provider, input, {
             maxNewTags: opts.maxNewTags,
             debug: opts.debug,
@@ -469,9 +498,11 @@ async function processAddress(
             if (!opts.dryRun)
               console.log(`  Run: pnpm listing:apply-tags ${proposalPath}`);
           }
+        } catch (err) {
+          console.log(
+            `[WARN]    AI inference failed: ${(err as Error).message}`
+          );
         }
-      } catch (err) {
-        console.log(`[WARN]    AI inference failed: ${(err as Error).message}`);
       }
     }
 
@@ -489,7 +520,8 @@ async function main() {
 
   const addresses = [...args.addresses];
   if (args.file) {
-    const lines = readFileSync(args.file, "utf-8")
+    const lines = fs
+      .readFileSync(args.file, "utf-8")
       .split("\n")
       .map((l) => l.trim())
       .filter(Boolean);
@@ -507,24 +539,116 @@ async function main() {
   let hadError = false;
 
   try {
-    for (let i = 0; i < addresses.length; i++) {
-      const ok = await processAddress(addresses[i], payload, {
-        sources: args.sources,
-        dryRun: args.dryRun,
-        skipPhotos: args.skipPhotos,
-        skipInference: args.skipInference,
-        strictSources: args.strictSources,
-        autoApproveTags: args.autoApproveTags,
-        maxNewTags: args.maxNewTags,
-        forceRevalidate: args.forceRevalidate,
-        forceRefetch: args.forceRefetch,
-        debug: args.debug,
-      });
-      if (!ok) hadError = true;
+    if (args.batch) {
+      if (args.skipInference) {
+        console.error(
+          "[ERROR] --batch and --skip-inference cannot be used together."
+        );
+        process.exit(1);
+      }
+      const provider = createProvider();
+      if (provider.name !== "gemini") {
+        console.error(
+          "[ERROR] --batch is only supported with Gemini. Set LLM_PROVIDER=gemini and GEMINI_API_KEY."
+        );
+        process.exit(1);
+      }
+      const deferredList: DeferredInferencePayload[] = [];
+      for (let i = 0; i < addresses.length; i++) {
+        const result = await processAddress(addresses[i], payload, {
+          sources: args.sources,
+          dryRun: args.dryRun,
+          skipPhotos: args.skipPhotos,
+          skipInference: false,
+          strictSources: args.strictSources,
+          autoApproveTags: args.autoApproveTags,
+          maxNewTags: args.maxNewTags,
+          forceRevalidate: args.forceRevalidate,
+          forceRefetch: args.forceRefetch,
+          debug: args.debug,
+          returnDeferredInference: true,
+        });
+        if (result === false) hadError = true;
+        else if (typeof result === "object" && "deferred" in result) {
+          deferredList.push(result.deferred);
+        }
+        if (i < addresses.length - 1 && args.delayMs > 0) {
+          console.log(`[WAIT]    ${args.delayMs}ms before next address...`);
+          await new Promise((r) => setTimeout(r, args.delayMs));
+        }
+      }
+      if (deferredList.length > 0) {
+        const batchItems: BatchInferenceItem[] = deferredList.map((d) => ({
+          input: d.inferenceInput,
+          opts: { maxNewTags: d.maxNewTags },
+        }));
+        const results = await inferTagsBatch(provider.config, batchItems);
+        for (let i = 0; i < results.length; i++) {
+          const d = deferredList[i];
+          const result = results[i];
+          if (result === null) {
+            console.log(
+              `[SKIP]    ${d.listingSlug} — batch item failed, no tags applied`
+            );
+            hadError = true;
+            continue;
+          }
+          console.log(
+            `[TOKENS]  ${d.listingSlug} input=${result.tokenUsage.inputTokens} output=${result.tokenUsage.outputTokens} model=${result.model}`
+          );
+          const proposal = {
+            listingSlug: d.listingSlug,
+            generatedAt: new Date().toISOString(),
+            provider: result.provider,
+            model: result.model,
+            inputFingerprint: d.fingerprint,
+            promptVersion: PROMPT_VERSION,
+            tokenUsage: result.tokenUsage,
+            photosAnalyzed: d.photoBuffers.length,
+            existingTagSlugs: result.existingTagSlugs,
+            newTagProposals: result.newTagProposals,
+            newCategoryProposals: result.newCategoryProposals,
+          };
+          if (args.autoApproveTags) {
+            await applyProposal(
+              d.listingId,
+              d.tagIds,
+              result,
+              d.catalogSlugToId,
+              payload,
+              { dryRun: args.dryRun, maxNewTags: args.maxNewTags }
+            );
+            if (!args.dryRun)
+              console.log(`[APPLIED] AI tags for ${d.listingSlug}`);
+          } else {
+            fs.mkdirSync(PROPOSALS_DIR, { recursive: true });
+            fs.writeFileSync(d.proposalPath, JSON.stringify(proposal, null, 2));
+            console.log(`[PROPOSAL] ${d.proposalPath}`);
+            if (!args.dryRun)
+              console.log(`  Run: pnpm listing:apply-tags ${d.proposalPath}`);
+          }
+        }
+      }
+    } else {
+      for (let i = 0; i < addresses.length; i++) {
+        const ok = await processAddress(addresses[i], payload, {
+          sources: args.sources,
+          dryRun: args.dryRun,
+          skipPhotos: args.skipPhotos,
+          skipInference: args.skipInference,
+          strictSources: args.strictSources,
+          autoApproveTags: args.autoApproveTags,
+          maxNewTags: args.maxNewTags,
+          forceRevalidate: args.forceRevalidate,
+          forceRefetch: args.forceRefetch,
+          debug: args.debug,
+        });
+        if (ok === false) hadError = true;
 
-      if (i < addresses.length - 1 && args.delayMs > 0) {
-        console.log(`[WAIT]    ${args.delayMs}ms before next address...`);
-        await new Promise((r) => setTimeout(r, args.delayMs));
+        if (i < addresses.length - 1 && args.delayMs > 0) {
+          console.log(`[WAIT]    ${args.delayMs}ms before next address...`);
+          await new Promise((r) => setTimeout(r, args.delayMs));
+        }
       }
     }
 

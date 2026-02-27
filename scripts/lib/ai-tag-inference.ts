@@ -1,22 +1,16 @@
 import { createHash } from "crypto";
 import path from "path";
 import fs from "fs";
-import { fileURLToPath } from "url";
 import type { TagCategoryValue } from "@/collections/Tags";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { getAddressDebugDir } from "./debug.js";
+import { getAddressDebugDir } from "./debug";
 import type { LLMProvider } from "./llm/types";
-import {
-  buildSystemPrompt,
-  buildUserPrompt,
-  PROMPT_VERSION,
-} from "./llm/prompt";
+import { buildSystemPrompt, buildUserPrompt } from "./llm/prompt";
 import {
   inferenceOutputSchema,
   inferenceJsonSchema,
   type InferenceOutput,
 } from "./llm/schema";
+import { estimateCost } from "./llm/cost";
 
 export interface InferenceInput {
   listing: {
@@ -89,6 +83,8 @@ export interface InferenceResult extends InferenceOutput {
   provider: string;
   model: string;
   tokenUsage: { inputTokens: number; outputTokens: number };
+  /** Estimated cost in USD (when available from cost module). */
+  estimatedCost?: number;
 }
 
 const LLM_MAX_PHOTOS = Math.max(
@@ -201,11 +197,16 @@ ${userText}
     );
   }
   const validated = inferenceOutputSchema.parse(parsed);
+  const cost = estimateCost(res.model, res.tokenUsage);
+  console.log(
+    `[COST]    ${res.model} $${cost.toFixed(4)} (${res.tokenUsage.inputTokens} in / ${res.tokenUsage.outputTokens} out)`
+  );
   console.log(`[INFER]   [${elapsedMs(t0)}] Done`);
   return {
     ...validated,
     provider: provider.name,
     model: res.model,
     tokenUsage: res.tokenUsage,
+    estimatedCost: cost,
   };
 }

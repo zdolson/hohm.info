@@ -1,4 +1,4 @@
-import type { ScrapedProperty, ScrapedEvent } from "../fetcher";
+import type { FetcherAdapter, ScrapedProperty, ScrapedEvent } from "../fetcher";
 
 const ACTOR = "maxcopell~zillow-scraper";
 const MAX_PHOTO_URLS = 20;
@@ -175,7 +175,8 @@ function mapZillowResult(data: any): ScrapedProperty {
 /** Fetch property data from Zillow via Apify actor (maxcopell/zillow-scraper). */
 export async function fetchZillow(address: string): Promise<ScrapedProperty> {
   const token = process.env.APIFY_TOKEN;
-  if (!token) throw new Error("APIFY_TOKEN env var is not set");
+  if (!token)
+    throw new Error("APIFY_TOKEN not set — set it or use --sources trulia");
 
   const encodedAddress = encodeURIComponent(address.replace(/\s+/g, "-"));
   const searchUrl = `https://www.zillow.com/homes/${encodedAddress}_rb/`;
@@ -206,4 +207,11 @@ export async function fetchZillow(address: string): Promise<ScrapedProperty> {
   }
 
   return mapZillowResult(results[0]);
+}
+
+export class ZillowAdapter implements FetcherAdapter {
+  readonly name = "zillow";
+  fetch(input: string): Promise<ScrapedProperty> {
+    return fetchZillow(input);
+  }
 }

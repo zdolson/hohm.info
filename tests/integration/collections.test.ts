@@ -19,11 +19,15 @@ async function getPayloadInstance() {
 describe("Phase 1 collections", () => {
   const testTagSlug = "integration-test-tag";
   const testListingSlug = "integration-test-listing";
-  let payload: Awaited<ReturnType<typeof getPayloadInstance>>;
+  let payload: Awaited<ReturnType<typeof getPayloadInstance>> | null = null;
 
   beforeAll(async () => {
     if (!hasDb) return;
-    payload = await getPayloadInstance();
+    try {
+      payload = await getPayloadInstance();
+    } catch {
+      payload = null;
+    }
   });
 
   afterAll(async () => {

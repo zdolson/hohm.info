@@ -24,6 +24,11 @@ import { applyProposal } from "./lib/apply-proposal";
 import { readMediaBytesBatch } from "./lib/media-bytes";
 import { proposalFileSchema } from "./lib/llm/schema";
 import type { Listing, Media, Tag } from "@/payload-types";
+import {
+  setDebugMode,
+  setDebugAddressSlug,
+  getAddressDebugDir,
+} from "./lib/debug.js";
 
 const PROPOSALS_DIR = path.resolve(__dirname, "output", "tag-proposals");
 const DEFAULT_MAX_NEW_TAGS = Math.max(
@@ -40,6 +45,7 @@ function parseArgs(): {
   dryRun: boolean;
   maxNewTags: number;
   noTagLimit: boolean;
+  debug: boolean;
 } {
   const args = process.argv.slice(2);
   let slug: string | undefined;
@@ -50,6 +56,7 @@ function parseArgs(): {
   let dryRun = false;
   let maxNewTags = DEFAULT_MAX_NEW_TAGS;
   let noTagLimit = false;
+  let debug = false;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--slug") slug = args[++i];
     else if (args[i] === "--all") all = true;
@@ -57,6 +64,7 @@ function parseArgs(): {
     else if (args[i] === "--force-revalidate") forceRevalidate = true;
     else if (args[i] === "--auto-approve-tags") autoApproveTags = true;
     else if (args[i] === "--dry-run") dryRun = true;
+    else if (args[i] === "--debug") debug = true;
     else if (args[i] === "--max-new-tags")
       maxNewTags = Math.max(0, parseInt(args[++i], 10) || 0);
     else if (args[i] === "--no-tag-limit") noTagLimit = true;
@@ -71,6 +79,7 @@ function parseArgs(): {
     dryRun,
     maxNewTags,
     noTagLimit,
+    debug,
   };
 }
 
@@ -148,6 +157,8 @@ async function fetchAllListings(
 
 async function main(): Promise<void> {
   const opts = parseArgs();
+  setDebugMode(opts.debug);
+
   if (opts.slug === undefined && !opts.all) {
     console.error("Usage: pnpm listing:enrich --slug <slug> | --all [options]");
     process.exit(1);
@@ -193,6 +204,7 @@ async function main(): Promise<void> {
     }
 
     for (const listing of listings) {
+      const tListing = Date.now();
       const currentTagIds = (listing.tags ?? [])
         .map((x) => (typeof x === "number" ? x : (x as Tag).id))
         .filter((id): id is number => typeof id === "number");
@@ -243,13 +255,24 @@ async function main(): Promise<void> {
       }
       if (skipRevalidation) continue;
 
+      if (opts.debug) {
+        setDebugAddressSlug(listing.slug);
+        const dir = getAddressDebugDir();
+        if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true });
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
       let result;
       try {
-        result = await inferTags(provider, input, { maxNewTags });
+        result = await inferTags(provider, input, {
+          maxNewTags,
+          debug: opts.debug,
+        });
       } catch (err) {
         console.error(
           `[VALIDATION ERROR] ${listing.slug}: ${(err as Error).message}`
         );
+        setDebugAddressSlug(null);
         continue;
       }
       console.log(
@@ -292,6 +315,9 @@ async function main(): Promise<void> {
           `  Run: pnpm listing:apply-tags ${proposalPath}${opts.dryRun ? " --dry-run" : ""}`
         );
       }
+      const elapsed = ((Date.now() - tListing) / 1000).toFixed(1);
+      console.log(`[ENRICH] ${listing.slug} done [${elapsed}s]`);
+      setDebugAddressSlug(null);
     }
   } finally {
     if (typeof payload.db.destroy === "function") await payload.db.destroy();

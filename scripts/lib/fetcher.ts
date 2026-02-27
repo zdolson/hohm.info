@@ -13,6 +13,12 @@ export interface ScrapedEvent {
   mlsNumber?: string;
 }
 
+export interface FetcherAdapter {
+  /** Unique source name used with --sources CLI arg */
+  readonly name: string;
+  fetch(input: string): Promise<ScrapedProperty>;
+}
+
 export interface ScrapedProperty {
   title?: string;
   address: string;
@@ -42,4 +48,40 @@ export interface ScrapedProperty {
   photoUrls?: string[];
   /** Listing description from scraper */
   description?: string;
+}
+
+export interface AdapterMeta {
+  readonly costTier: "free" | "freemium" | "paid";
+  readonly stability: "stable" | "fragile" | "experimental";
+  readonly requiresAuth: boolean;
+}
+
+export const FETCH_ERROR_CODES = [
+  "blocked",
+  "notFound",
+  "parseError",
+  "timeout",
+  "authRequired",
+  "networkError",
+] as const;
+
+export type FetchErrorCode = (typeof FETCH_ERROR_CODES)[number];
+
+export class FetchError extends Error {
+  readonly code: FetchErrorCode;
+  readonly source: string;
+  readonly url?: string;
+
+  constructor(
+    code: FetchErrorCode,
+    source: string,
+    message: string,
+    url?: string
+  ) {
+    super(message);
+    this.name = "FetchError";
+    this.code = code;
+    this.source = source;
+    this.url = url;
+  }
 }

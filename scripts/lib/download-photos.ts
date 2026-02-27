@@ -3,7 +3,7 @@ import type { Payload } from "payload";
 
 const PHOTO_SOURCE_ALLOWLIST = (
   process.env.PHOTO_SOURCE_ALLOWLIST ??
-  "zillowstatic.com,photos.zillowstatic.com"
+  "zillowstatic.com,photos.zillowstatic.com,media.trulia.com,www.trulia.com,trulia.com"
 )
   .split(",")
   .map((h) => h.trim().toLowerCase())

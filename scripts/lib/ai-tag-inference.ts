@@ -1,5 +1,11 @@
 import { createHash } from "crypto";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 import type { TagCategoryValue } from "@/collections/Tags";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { getAddressDebugDir } from "./debug.js";
 import type { LLMProvider } from "./llm/types";
 import {
   buildSystemPrompt,
@@ -90,11 +96,17 @@ const LLM_MAX_PHOTOS = Math.max(
   parseInt(process.env.LLM_MAX_PHOTOS ?? "6", 10) || 6
 );
 
+function elapsedMs(start: number): string {
+  return `${((Date.now() - start) / 1000).toFixed(1)}s`;
+}
+
 export async function inferTags(
   provider: LLMProvider,
   input: InferenceInput,
-  opts: { maxNewTags: number; maxTokens?: number }
+  opts: { maxNewTags: number; maxTokens?: number; debug?: boolean }
 ): Promise<InferenceResult> {
+  const t0 = Date.now();
+
   const systemPrompt = buildSystemPrompt({
     existingTags: input.existingTags,
     maxNewTags: opts.maxNewTags,
@@ -112,12 +124,84 @@ export async function inferTags(
     { role: "system" as const, content: systemPrompt },
     { role: "user" as const, content: content.length > 1 ? content : userText },
   ];
+
+  console.log(
+    `[INFER]   [${elapsedMs(t0)}] Using LLM: ${provider.name} / ${provider.config.model}`
+  );
+
+  if (opts.debug === true) {
+    try {
+      const dir = getAddressDebugDir();
+      fs.mkdirSync(dir, { recursive: true });
+      const slug = input.listing.slug;
+      const photosDir = path.join(dir, "photos");
+      fs.mkdirSync(photosDir, { recursive: true });
+      const savedPhotos: string[] = [];
+      for (let i = 0; i < photoBuffers.length; i++) {
+        const name = `photo-${i}.jpg`;
+        const photoPath = path.join(photosDir, name);
+        fs.writeFileSync(photoPath, photoBuffers[i]);
+        savedPhotos.push(name);
+      }
+      const photoNote =
+        savedPhotos.length > 0
+          ? `\n# Images: photos/${savedPhotos.join(", photos/")}\n`
+          : "";
+      const body = `# Inference prompt for ${slug}
+# Paste SYSTEM into system prompt (if your client has one), USER into the chat.
+# Add the images from photos/ in order if your client supports vision.
+# Expected response: JSON with existingTagSlugs, newTagProposals, newCategoryProposals.
+${photoNote}
+
+=== SYSTEM ===
+
+${systemPrompt}
+
+=== USER ===
+
+${userText}
+`;
+      const outPath = path.join(dir, "prompt.txt");
+      fs.writeFileSync(outPath, body);
+      console.log(`[INFER]   [${elapsedMs(t0)}] Prompt saved to ${outPath}`);
+      if (savedPhotos.length > 0) {
+        console.log(
+          `[INFER]   ${savedPhotos.length} image(s) saved to ${photosDir}`
+        );
+      }
+    } catch {
+      // non-fatal
+    }
+  }
+
+  const tCall = Date.now();
+  console.log(
+    `[INFER]   [${elapsedMs(t0)}] Calling LLM (${photoBuffers.length} photos, ${input.listing.rawAttributes.length} attributes) — may take 1–2 min...`
+  );
   const res = await provider.chat(messages, {
     jsonSchema: inferenceJsonSchema as Record<string, unknown>,
     maxTokens: opts.maxTokens ?? 4096,
   });
-  const parsed = JSON.parse(res.content) as unknown;
+  console.log(
+    `[INFER]   [${elapsedMs(t0)}] LLM responded (${res.content.length} chars, call=${elapsedMs(tCall)}), parsing...`
+  );
+  const trimmed = res.content.trim();
+  if (trimmed.length === 0) {
+    throw new Error(
+      "LLM returned empty response. With Ollama, some models do not support structured JSON output and can return nothing. Try a model that supports it (see https://docs.ollama.com/capabilities/structured-outputs) or run with --skip-inference."
+    );
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(res.content) as unknown;
+  } catch (parseErr) {
+    const snippet = trimmed.slice(0, 200);
+    throw new Error(
+      `LLM response was not valid JSON: ${(parseErr as Error).message}. First 200 chars: ${snippet}`
+    );
+  }
   const validated = inferenceOutputSchema.parse(parsed);
+  console.log(`[INFER]   [${elapsedMs(t0)}] Done`);
   return {
     ...validated,
     provider: provider.name,

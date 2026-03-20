@@ -8,13 +8,15 @@ import type { InferenceInput, InferenceResult } from "../ai-tag-inference";
 import { buildSystemPrompt, buildUserPrompt } from "./prompt";
 import { inferenceOutputSchema, inferenceJsonSchema } from "./schema";
 import { estimateCost } from "./cost";
+import { flattenSchemaForGemini } from "./flatten-schema.js";
 
-const _parsedMaxPhotos = parseInt(process.env.LLM_MAX_PHOTOS ?? "", 10);
-const LLM_MAX_PHOTOS = isNaN(_parsedMaxPhotos)
-  ? 6
-  : Math.max(0, _parsedMaxPhotos);
+/** Read at runtime so dotenv has run (entry point loads env before batch runs). */
+function getLLMMaxPhotos(): number {
+  const parsed = parseInt(process.env.LLM_MAX_PHOTOS ?? "", 10);
+  return isNaN(parsed) ? 6 : Math.max(0, parsed);
+}
 
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 15_000; // 15s; batch jobs can sit in PENDING 10–30+ min
 const MAX_POLL_MS = 24 * 60 * 60 * 1000; // 24h
 const INLINE_BATCH_MAX_BYTES = 20 * 1024 * 1024; // 20MB
 
@@ -45,7 +47,7 @@ function buildInlinedRequest(item: BatchInferenceItem): {
     maxNewTags: item.opts.maxNewTags,
   });
   const userText = buildUserPrompt({ listing: item.input.listing });
-  const photoBuffers = item.input.photos.slice(0, LLM_MAX_PHOTOS);
+  const photoBuffers = item.input.photos.slice(0, getLLMMaxPhotos());
   const parts: Array<{
     text?: string;
     inlineData?: { mimeType: string; data: string };
@@ -61,9 +63,11 @@ function buildInlinedRequest(item: BatchInferenceItem): {
   const contents = [{ role: "user" as const, parts }];
   const config = {
     systemInstruction,
-    maxOutputTokens: item.opts.maxTokens ?? 4096,
+    maxOutputTokens: item.opts.maxTokens ?? 8192,
     responseMimeType: "application/json" as const,
-    responseJsonSchema: inferenceJsonSchema,
+    responseJsonSchema: flattenSchemaForGemini(
+      inferenceJsonSchema as Record<string, unknown>
+    ),
   };
   return { contents, config, sizeBytes };
 }
@@ -122,7 +126,11 @@ export async function inferTagsBatch(
     throw new Error("Batch job created but no name returned.");
   }
   const jobName = job.name;
+  const pollStart = Date.now();
   console.log(`[BATCH]   Job created: ${jobName} (state: ${job.state})`);
+  console.log(
+    `[BATCH]   Batch jobs are async; PENDING can last 10–30+ min. Polling every ${POLL_INTERVAL_MS / 1000}s.`
+  );
 
   const deadline = Date.now() + MAX_POLL_MS;
   // Loop while state is unknown (undefined) OR not yet terminal
@@ -132,7 +140,10 @@ export async function inferTagsBatch(
     }
     await sleep(POLL_INTERVAL_MS);
     job = await ai.batches.get({ name: jobName });
-    console.log(`[BATCH]   ${jobName} state=${job.state}`);
+    const elapsed = Math.round((Date.now() - pollStart) / 1000);
+    console.log(
+      `[BATCH]   ${jobName} state=${job.state} (elapsed ${elapsed}s)`
+    );
   }
 
   if (

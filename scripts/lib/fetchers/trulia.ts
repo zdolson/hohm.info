@@ -10,7 +10,8 @@ import {
   getAddressDebugDir,
   getDebugDir,
 } from "../debug.js";
-const MAX_PHOTO_URLS = 20;
+/** Max photo URLs to extract per listing (was 20; raised so 57+ gallery listings are captured). */
+const MAX_PHOTO_URLS = 60;
 
 /* ---------- helpers ---------- */
 
@@ -71,7 +72,7 @@ function resolveUrl(input: string): string {
     return input.replace(/\/+$/, "");
   }
   console.warn(
-    `[WARN]    Trulia works best with direct URLs. Attempting slug-based lookup for: ${input}`
+    `[WARN]    Trulia works best with the exact URL from the listing page (street-city-state-zip-listingId). Attempting slug-based lookup for: ${input}`
   );
   return `https://www.trulia.com/home/${slugifyAddress(input)}`;
 }
@@ -235,6 +236,20 @@ function mapTruliaHomeDetails(
 
   const photoUrls: string[] = [];
   const media = home["media"];
+  const singleUrl = (m: Record<string, unknown>, ...keys: string[]) => {
+    for (const k of keys) {
+      const v = m[k];
+      if (typeof v === "string" && v.startsWith("http")) return v;
+      if (typeof v === "object" && v !== null) {
+        const u =
+          str((v as Record<string, unknown>)["url"]) ??
+          str((v as Record<string, unknown>)["large"]) ??
+          str((v as Record<string, unknown>)["smallSrc"]);
+        if (u !== undefined) return u;
+      }
+    }
+    return undefined;
+  };
   if (typeof media === "object" && media !== null) {
     const photos = (media as Record<string, unknown>)["photos"];
     if (Array.isArray(photos)) {
@@ -252,6 +267,38 @@ function mapTruliaHomeDetails(
         if (photoUrls.length >= MAX_PHOTO_URLS) break;
       }
     }
+    if (photoUrls.length === 0) {
+      const u =
+        singleUrl(
+          media as Record<string, unknown>,
+          "heroImage",
+          "primaryPhoto",
+          "coverPhoto",
+          "coverImage",
+          "image",
+          "thumbnail"
+        ) ??
+        singleUrl(
+          home,
+          "heroImage",
+          "primaryPhoto",
+          "coverPhoto",
+          "image",
+          "thumbnail"
+        );
+      if (u !== undefined) photoUrls.push(u);
+    }
+  }
+  if (photoUrls.length === 0) {
+    const u = singleUrl(
+      home,
+      "heroImage",
+      "primaryPhoto",
+      "coverPhoto",
+      "image",
+      "thumbnail"
+    );
+    if (u !== undefined) photoUrls.push(u);
   }
 
   const hasAnyData =
@@ -336,6 +383,12 @@ function extractFromNextData(
       url
     );
     if (mapped !== null) {
+      if (Array.isArray(mapped.photoUrls) && mapped.photoUrls.length === 0) {
+        const ogImage = $('meta[property="og:image"]').attr("content");
+        if (ogImage !== undefined && ogImage.startsWith("https://")) {
+          mapped.photoUrls.push(ogImage);
+        }
+      }
       if (getDebugMode())
         console.log(
           `[DEBUG]   Extracted data from __NEXT_DATA__ (homeDetails)`

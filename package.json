@@ -30,6 +30,7 @@
     "import-address": "pnpm import:address",
     "enrich-listing": "pnpm listing:enrich",
     "apply-tags": "pnpm listing:apply-tags",
+    "test:inference-cost": "tsx scripts/test-inference-cost.ts",
     "generate:types": "pnpm payload:types",
     "migrate": "pnpm payload:migrate",
     "migrate:create": "pnpm payload:migrate:create"

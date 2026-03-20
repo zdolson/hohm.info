@@ -6,6 +6,7 @@ import type {
   LLMProvider,
   LLMResponse,
 } from "./types.js";
+import { flattenSchemaForGemini } from "./flatten-schema.js";
 
 export class GeminiProvider implements LLMProvider {
   readonly name = "gemini";
@@ -86,7 +87,9 @@ export class GeminiProvider implements LLMProvider {
     }
     if (options?.jsonSchema !== undefined) {
       config.responseMimeType = "application/json";
-      config.responseJsonSchema = options.jsonSchema;
+      config.responseJsonSchema = flattenSchemaForGemini(
+        options.jsonSchema as Record<string, unknown>
+      );
     }
 
     if (userParts.length === 0) {

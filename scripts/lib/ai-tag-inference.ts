@@ -87,10 +87,10 @@ export interface InferenceResult extends InferenceOutput {
   estimatedCost?: number;
 }
 
-const LLM_MAX_PHOTOS = Math.max(
-  0,
-  parseInt(process.env.LLM_MAX_PHOTOS ?? "6", 10) || 6
-);
+/** Read at runtime so dotenv has run (entry point loads env before calling inferTags). */
+function getLLMMaxPhotos(): number {
+  return Math.max(0, parseInt(process.env.LLM_MAX_PHOTOS ?? "6", 10) || 6);
+}
 
 function elapsedMs(start: number): string {
   return `${((Date.now() - start) / 1000).toFixed(1)}s`;
@@ -108,7 +108,8 @@ export async function inferTags(
     maxNewTags: opts.maxNewTags,
   });
   const userText = buildUserPrompt({ listing: input.listing });
-  const photoBuffers = input.photos.slice(0, LLM_MAX_PHOTOS);
+  const maxPhotos = getLLMMaxPhotos();
+  const photoBuffers = input.photos.slice(0, maxPhotos);
   const content: Array<
     | { type: "text"; text: string }
     | { type: "image"; data: Buffer; mimeType: string }
@@ -133,15 +134,20 @@ export async function inferTags(
       const photosDir = path.join(dir, "photos");
       fs.mkdirSync(photosDir, { recursive: true });
       const savedPhotos: string[] = [];
-      for (let i = 0; i < photoBuffers.length; i++) {
+      const allPhotos = input.photos;
+      for (let i = 0; i < allPhotos.length; i++) {
         const name = `photo-${i}.jpg`;
         const photoPath = path.join(photosDir, name);
-        fs.writeFileSync(photoPath, photoBuffers[i]);
+        fs.writeFileSync(photoPath, allPhotos[i]);
         savedPhotos.push(name);
       }
+      const sentToLlm =
+        savedPhotos.length > 0
+          ? ` (first ${photoBuffers.length} sent to LLM, cap LLM_MAX_PHOTOS=${maxPhotos})`
+          : "";
       const photoNote =
         savedPhotos.length > 0
-          ? `\n# Images: photos/${savedPhotos.join(", photos/")}\n`
+          ? `\n# Images: photos/${savedPhotos.join(", photos/")}\n# Using first ${photoBuffers.length} for LLM.\n`
           : "";
       const body = `# Inference prompt for ${slug}
 # Paste SYSTEM into system prompt (if your client has one), USER into the chat.
@@ -162,7 +168,7 @@ ${userText}
       console.log(`[INFER]   [${elapsedMs(t0)}] Prompt saved to ${outPath}`);
       if (savedPhotos.length > 0) {
         console.log(
-          `[INFER]   ${savedPhotos.length} image(s) saved to ${photosDir}`
+          `[INFER]   ${savedPhotos.length} image(s) saved to ${photosDir}${sentToLlm}`
         );
       }
     } catch {
@@ -176,11 +182,22 @@ ${userText}
   );
   const res = await provider.chat(messages, {
     jsonSchema: inferenceJsonSchema as Record<string, unknown>,
-    maxTokens: opts.maxTokens ?? 4096,
+    maxTokens: opts.maxTokens ?? 8192,
   });
   console.log(
     `[INFER]   [${elapsedMs(t0)}] LLM responded (${res.content.length} chars, call=${elapsedMs(tCall)}), parsing...`
   );
+  if (opts.debug === true) {
+    try {
+      const rawPath = path.join(getAddressDebugDir(), "llm-response-raw.txt");
+      fs.writeFileSync(rawPath, res.content, "utf-8");
+      console.log(
+        `[INFER]   [${elapsedMs(t0)}] Raw response saved to ${rawPath}`
+      );
+    } catch {
+      // non-fatal
+    }
+  }
   const trimmed = res.content.trim();
   if (trimmed.length === 0) {
     throw new Error(
@@ -192,8 +209,19 @@ ${userText}
     parsed = JSON.parse(res.content) as unknown;
   } catch (parseErr) {
     const snippet = trimmed.slice(0, 200);
+    const truncated =
+      trimmed.length > 0 &&
+      !/[\]\}]$/.test(trimmed) &&
+      (parseErr as Error).message.includes("Unexpected end");
+    const hint = truncated
+      ? " Response likely truncated (hit maxTokens?). Consider higher maxTokens."
+      : "";
+    const debugHint =
+      opts.debug === true
+        ? ` Raw response saved to ${path.join(getAddressDebugDir(), "llm-response-raw.txt")}.`
+        : " Run with --debug to save raw response for inspection.";
     throw new Error(
-      `LLM response was not valid JSON: ${(parseErr as Error).message}. First 200 chars: ${snippet}`
+      `LLM response was not valid JSON: ${(parseErr as Error).message}. First 200 chars: ${snippet}${hint}${debugHint}`
     );
   }
   const validated = inferenceOutputSchema.parse(parsed);

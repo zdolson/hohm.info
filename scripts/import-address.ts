@@ -6,6 +6,7 @@
  *      [--auto-approve-tags] [--max-new-tags N] [--force-revalidate]
  * Default source: env IMPORT_DEFAULT_SOURCES or "trulia" (no API keys required).
  * --batch: defer inference and run one Gemini batch job (50% cost); Gemini only.
+ * Trulia: use the exact URL from the listing page when possible (e.g. .../home/street-east-grand-rapids-mi-49506-23851881).
  */
 import path from "path";
 import fs from "fs";
@@ -44,6 +45,37 @@ import { inferTagsBatch, type BatchInferenceItem } from "./lib/llm/batch.js";
 
 const PROPOSALS_DIR = path.resolve(__dirname, "output", "tag-proposals");
 const SCRAPE_CACHE_DIR = path.resolve(__dirname, "output", "scrape-cache");
+
+/** Derive expected state (e.g. "MI") from request address or Trulia URL for validation. */
+function getExpectedStateFromRequest(address: string): string | undefined {
+  const trimmed = address.trim();
+  // Trulia URL: .../home/street-city-st-zip or .../home/...-st-zip-id
+  const truliaMatch = trimmed.match(/trulia\.com\/home\/([^/?#]+)/i);
+  if (truliaMatch !== null) {
+    const slug = truliaMatch[1].toLowerCase();
+    const stateMatch = slug.match(/-([a-z]{2})(?:-\d{5})?(?:-\d+)?$/);
+    if (stateMatch !== null) return stateMatch[1].toUpperCase();
+  }
+  // Freeform: "Street, City, ST 12345" or "..., ST"
+  const commaParts = trimmed.split(",").map((p) => p.trim());
+  if (commaParts.length >= 3) {
+    const last = commaParts[commaParts.length - 1];
+    const stateMatch = last.match(/^([A-Za-z]{2})(?:\s+\d{5})?$/);
+    if (stateMatch !== null) return stateMatch[1].toUpperCase();
+  }
+  return undefined;
+}
+
+/** Return true if scraped listing appears to match the requested address (same state). */
+function scrapedMatchesRequest(
+  scraped: ScrapedProperty,
+  requestedAddress: string
+): boolean {
+  const expectedState = getExpectedStateFromRequest(requestedAddress);
+  if (expectedState === undefined) return true; // can't validate, allow
+  const scrapedState = (scraped.state ?? "").trim().toUpperCase();
+  return scrapedState === expectedState;
+}
 
 /** When --batch: processAddress returns this instead of running inference. */
 export interface DeferredInferencePayload {
@@ -182,8 +214,19 @@ async function processAddress(
           typeof parsed.city === "string" &&
           typeof parsed.state === "string"
         ) {
-          scraped = parsed;
-          console.log(`[CACHE]   Using cached scrape for: ${address}`);
+          if (!scrapedMatchesRequest(parsed, address)) {
+            console.log(
+              `[CACHE]   Cached scrape is for ${parsed.address}, ${parsed.city}, ${parsed.state} but request was for ${address}; invalidating and re-fetching.`
+            );
+            try {
+              fs.unlinkSync(cachePath);
+            } catch {
+              // ignore
+            }
+          } else {
+            scraped = parsed;
+            console.log(`[CACHE]   Using cached scrape for: ${address}`);
+          }
         } else {
           console.log(
             `[CACHE]   Cache schema mismatch, re-fetching: ${address}`
@@ -223,6 +266,16 @@ async function processAddress(
         return false;
       }
       scraped = results.length === 1 ? results[0].data : mergeScraped(results);
+
+      if (!scrapedMatchesRequest(scraped, address)) {
+        console.log(
+          `[ERROR]   Fetched listing is for ${scraped.address}, ${scraped.city}, ${scraped.state} but request was for ${address}. Trulia may have returned the wrong page.`
+        );
+        console.log(
+          `[ERROR]   Use the exact Trulia URL from the listing page (includes city/neighborhood and listing ID), e.g. https://www.trulia.com/home/2114-anderson-dr-se-east-grand-rapids-mi-49506-23851881`
+        );
+        return false;
+      }
 
       // Write to scrape cache
       fs.mkdirSync(SCRAPE_CACHE_DIR, { recursive: true });

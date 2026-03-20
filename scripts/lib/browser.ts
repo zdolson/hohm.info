@@ -126,6 +126,19 @@ const BLOCK_TITLE_PATTERNS = [
 
 const BLOCK_PATH_SEGMENTS = ["/captcha", "/challenge", "/blocked"];
 
+/** Fast check using only URL + title (no body/scripts). Use right after goto to fail fast when blocked. */
+async function quickBlockCheck(page: Page): Promise<string | null> {
+  const pageUrl = page.url();
+  for (const seg of BLOCK_PATH_SEGMENTS) {
+    if (pageUrl.includes(seg)) return `URL contains ${seg}`;
+  }
+  const title = (await page.title()).toLowerCase();
+  for (const pattern of BLOCK_TITLE_PATTERNS) {
+    if (title.includes(pattern)) return `Page title: "${title}"`;
+  }
+  return null;
+}
+
 async function detectBlock(page: Page): Promise<string | null> {
   const pageUrl = page.url();
   for (const seg of BLOCK_PATH_SEGMENTS) {
@@ -191,6 +204,22 @@ export async function fetchPageHtml(
           `HTTP ${status} from ${url}`,
           url
         );
+      }
+
+      // Quick block check before long waits (saves 15s+ when blocked)
+      await page.waitForTimeout(1500);
+      const quickBlock = await quickBlockCheck(page);
+      if (quickBlock !== null) {
+        if (attempt < maxRetries) {
+          const backoff = baseDelayMs * Math.pow(2, attempt) + jitter(jitterMs);
+          console.log(
+            `[RETRY]   Blocked (attempt ${attempt + 1}/${maxRetries + 1}): ${quickBlock}. Waiting ${backoff}ms...`
+          );
+          await page.close().catch(() => {});
+          await new Promise((r) => setTimeout(r, backoff));
+          continue;
+        }
+        throw new FetchError("blocked", "browser", quickBlock, url);
       }
 
       // Give SPA JS time to hydrate (soft — won't throw on timeout)
